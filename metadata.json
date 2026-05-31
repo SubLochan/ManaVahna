@@ -1,0 +1,6 @@
+{
+  "name": "ManaVahana",
+  "description": "A modern offline-first vehicle maintenance and expense tracker app inspired by Telugu design aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
