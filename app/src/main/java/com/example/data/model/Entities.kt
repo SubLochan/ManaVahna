@@ -75,3 +75,13 @@ data class Reminder(
     val isCompleted: Boolean = false,
     val category: String // Insurance, Pollution, Service, EMI, License
 )
+
+@Entity(tableName = "users")
+data class User(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val email: String,
+    val name: String,
+    val passwordHash: String,
+    val createdAt: Long
+)
+

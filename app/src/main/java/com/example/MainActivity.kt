@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
                 val isPinVerified by viewModel.isPinVerified.collectAsState()
                 val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
+                val currentUser by viewModel.currentUserState.collectAsState()
 
                 // List of destinations that require the Bottom Navigation Bar
                 val bottomNavDestinations = listOf(
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
                     "settings"
                 )
 
-                val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled)
+                val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled) && currentUser != null
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -210,12 +211,7 @@ class MainActivity : ComponentActivity() {
 
                         composable("settings") {
                             SettingsScreen(
-                                viewModel = viewModel,
-                                onLogout = {
-                                    navController.navigate("login") {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                }
+                                viewModel = viewModel
                             )
                         }
                     }

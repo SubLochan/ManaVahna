@@ -102,8 +102,68 @@ fun DashboardScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-        // Welcoming Card & Core Telemetry vs Selected Primary Vehicle Card
-        item {
+            // Logged-in User Profile Header
+            item {
+                val currentUser by viewModel.currentUserState.collectAsState()
+                if (currentUser != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("dashboard_user_header"),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Dynamic User Avatar
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = currentUser!!.name.take(1).uppercase(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "నమస్కారం, ${currentUser!!.name}!",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Text(
+                                        text = currentUser!!.email,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.70f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Welcoming Card & Core Telemetry vs Selected Primary Vehicle Card
+            item {
             val currentVehicle = selectedVehicle
             if (currentVehicle != null) {
                 Card(

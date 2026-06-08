@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -133,6 +134,7 @@ fun OnboardingScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+
         AnimatedContent(
             targetState = step,
             transitionSpec = {
@@ -427,6 +429,8 @@ fun PinLockScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 
     if (showFingerprintDialog) {
