@@ -14,9 +14,10 @@ import com.example.data.model.*
         FuelLog::class,
         Expense::class,
         Document::class,
-        Reminder::class
+        Reminder::class,
+        User::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun documentDao(): DocumentDao
     abstract fun reminderDao(): ReminderDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile

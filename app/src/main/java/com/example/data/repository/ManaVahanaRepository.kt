@@ -10,8 +10,13 @@ class ManaVahanaRepository(
     private val fuelLogDao: FuelLogDao,
     private val expenseDao: ExpenseDao,
     private val documentDao: DocumentDao,
-    private val reminderDao: ReminderDao
+    private val reminderDao: ReminderDao,
+    private val userDao: UserDao
 ) {
+    // Users
+    suspend fun getUserByEmail(email: String): User? = userDao.getUserByEmail(email)
+    suspend fun insertUser(user: User): Long = userDao.insertUser(user)
+
     // Vehicles
     val allVehicles: Flow<List<Vehicle>> = vehicleDao.getAllVehicles()
     fun getVehicleById(id: Int): Flow<Vehicle?> = vehicleDao.getVehicleById(id)

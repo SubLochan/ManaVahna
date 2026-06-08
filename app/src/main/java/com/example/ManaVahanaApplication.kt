@@ -25,7 +25,8 @@ class ManaVahanaApplication : Application() {
             database.fuelLogDao(),
             database.expenseDao(),
             database.documentDao(),
-            database.reminderDao()
+            database.reminderDao(),
+            database.userDao()
         )
     }
     val userPreferencesRepository by lazy { UserPreferencesRepository(this) }

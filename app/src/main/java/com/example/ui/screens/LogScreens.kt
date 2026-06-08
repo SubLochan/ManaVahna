@@ -470,7 +470,7 @@ fun FuelLogsScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text("$vehicleName - Filled ${log.litersFilled}L", fontWeight = FontWeight.Bold)
                                         Text("Station: ${log.fuelStationName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                        Text("Price/L: ₹${log.pricePerLiter} | Odo: ${log.odometerReading} km", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                        Text("Odo: ${log.odometerReading} km", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                                         if (mileage != null && mileage > 0) {
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text("మైలేజ్ (Mileage): ${String.format("%.2f", mileage)} km/L", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
@@ -545,11 +545,6 @@ fun FuelLogsScreen(
                             value = litersFilled,
                             onValueChange = {
                                 litersFilled = it
-                                val price = pricePerLiter.toDoubleOrNull() ?: 0.0
-                                val liters = it.toDoubleOrNull() ?: 0.0
-                                if (price > 0 && liters > 0) {
-                                    totalAmount = String.format(Locale.US, "%.2f", price * liters)
-                                }
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             label = { Text("Liters Filled") },
@@ -559,34 +554,9 @@ fun FuelLogsScreen(
 
                     item {
                         OutlinedTextField(
-                            value = pricePerLiter,
-                            onValueChange = {
-                                pricePerLiter = it
-                                val price = it.toDoubleOrNull() ?: 0.0
-                                val total = totalAmount.toDoubleOrNull() ?: 0.0
-                                val liters = litersFilled.toDoubleOrNull() ?: 0.0
-                                if (price > 0 && total > 0) {
-                                    litersFilled = String.format(Locale.US, "%.2f", total / price)
-                                } else if (price > 0 && liters > 0) {
-                                    totalAmount = String.format(Locale.US, "%.2f", price * liters)
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            label = { Text("Price Per Liter (₹)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    item {
-                        OutlinedTextField(
                             value = totalAmount,
                             onValueChange = {
                                 totalAmount = it
-                                val total = it.toDoubleOrNull() ?: 0.0
-                                val price = pricePerLiter.toDoubleOrNull() ?: 0.0
-                                if (price > 0 && total > 0) {
-                                    litersFilled = String.format(Locale.US, "%.2f", total / price)
-                                }
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             label = { Text("Total Cost (₹)") },
@@ -628,13 +598,16 @@ fun FuelLogsScreen(
                 Button(
                     onClick = {
                         if (vehicleId > 0 && litersFilled.isNotBlank() && totalAmount.isNotBlank() && odometerReading.isNotBlank()) {
+                            val liters = litersFilled.toDoubleOrNull() ?: 0.0
+                            val total = totalAmount.toDoubleOrNull() ?: 0.0
+                            val calculatedPrice = if (liters > 0) total / liters else 0.0
                             val newFuelLog = FuelLog(
                                 id = editingFuel?.id ?: 0,
                                 vehicleId = vehicleId,
                                 fuelDate = fuelDate,
-                                litersFilled = litersFilled.toDoubleOrNull() ?: 0.0,
-                                pricePerLiter = pricePerLiter.toDoubleOrNull() ?: 0.0,
-                                totalAmount = totalAmount.toDoubleOrNull() ?: 0.0,
+                                litersFilled = liters,
+                                pricePerLiter = calculatedPrice,
+                                totalAmount = total,
                                 odometerReading = odometerReading.toDoubleOrNull() ?: 0.0,
                                 fuelStationName = fuelStationName.ifBlank { "Local Pump" }
                             )

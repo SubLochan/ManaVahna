@@ -17,10 +17,15 @@ class UserPreferencesRepository(private val context: Context) {
         private val IS_PIN_LOCK_ENABLED = booleanPreferencesKey("is_pin_lock_enabled")
         private val IS_FINGERPRINT_ENABLED = booleanPreferencesKey("is_fingerprint_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val JWT_TOKEN = stringPreferencesKey("jwt_token")
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[THEME_MODE] ?: "system"
+    }
+
+    val jwtToken: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[JWT_TOKEN]
     }
 
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -68,6 +73,18 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE] = mode
+        }
+    }
+
+    suspend fun saveJwt(token: String) {
+        context.dataStore.edit { preferences ->
+            preferences[JWT_TOKEN] = token
+        }
+    }
+
+    suspend fun clearJwt() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(JWT_TOKEN)
         }
     }
 }

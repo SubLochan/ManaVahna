@@ -36,6 +36,55 @@ class ManaVahanaViewModel(
     val themeMode = preferencesRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
 
+    // User Session & JWT State Flow (Constant offline profile)
+    val jwtToken = flow {
+        emit("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMjIiLCJlbWFpbCI6Im93bmVyQG1hbmF2YWhhbmEubG9jYWwiLCJuYW1lIjoiTWFuYVZhaGFuYSBPd25lciIsImV4cCI6MTc3MTAxODIwMH0.mockPassed")
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMjIiLCJlbWFpbCI6Im93bmVyQG1hbmF2YWhhbmEubG9jYWwiLCJuYW1lIjoiTWFuYVZhaGFuYSBPd25lciIsImV4cCI6MTc3MTAxODIwMH0.mockPassed")
+
+    val currentUserState = flow {
+        emit(
+            DecodedToken(
+                userId = 222,
+                email = "owner@manavahana.local",
+                name = "యజమాని (Owner)",
+                exp = (System.currentTimeMillis() / 1000) + 3600000,
+                rawJson = "{\n  \"sub\": \"222\",\n  \"email\": \"owner@manavahana.local\",\n  \"name\": \"Owner\"\n}"
+            )
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        DecodedToken(
+            userId = 222,
+            email = "owner@manavahana.local",
+            name = "యజమాని (Owner)",
+            exp = (System.currentTimeMillis() / 1000) + 3600000,
+            rawJson = "{\n  \"sub\": \"222\",\n  \"email\": \"owner@manavahana.local\",\n  \"name\": \"Owner\"\n}"
+        )
+    )
+
+    suspend fun registerUser(name: String, email: String, password: String): Result<String> {
+        return Result.success("mock_token")
+    }
+
+    suspend fun loginUser(email: String, password: String): Result<String> {
+        return Result.success("mock_token")
+    }
+
+    fun jwtLogout() {
+        // No-op offline
+    }
+
+    private fun hashPassword(password: String): String {
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(password.toByteArray(Charsets.UTF_8))
+            hash.joinToString("") { String.format("%02x", it) }
+        } catch (e: Exception) {
+            password
+        }
+    }
+
     // Verification state for current session
     private val _isPinVerified = MutableStateFlow(false)
     val isPinVerified: StateFlow<Boolean> = _isPinVerified.asStateFlow()

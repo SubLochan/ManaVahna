@@ -3,7 +3,10 @@ package com.example.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import android.content.ClipboardManager
+import android.content.ClipData
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -29,13 +33,14 @@ import com.example.ui.pdf.PdfGenerator
 
 @Composable
 fun SettingsScreen(
-    viewModel: ManaVahanaViewModel,
-    onLogout: () -> Unit
+    viewModel: ManaVahanaViewModel
 ) {
     val context = LocalContext.current
 
     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
+
+    val currentUserState by viewModel.currentUserState.collectAsState()
 
     // Database states gathered for exports
     val vehicles by viewModel.vehicles.collectAsState()
@@ -388,20 +393,9 @@ fun SettingsScreen(
             }
         }
 
-        // Security Logout Card
+        // Security Configuration Card
         item {
-            Button(
-                onClick = {
-                    viewModel.logout()
-                    onLogout()
-                },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Icon(Icons.Default.ExitToApp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Lock App Session")
-            }
+            Spacer(modifier = Modifier.height(90.dp))
         }
     }
 
