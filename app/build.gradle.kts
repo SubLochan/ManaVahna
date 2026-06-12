@@ -25,10 +25,10 @@ android {
   signingConfigs {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file("D:\\Android_Projects\\ManaVahna\\ManaVahna_key.jks")
-      storePassword = System.getenv("Lochan@2005#")
-      keyAlias = "ManaVahnaKey"
-      keyPassword = System.getenv("Lochan@2005#")
+      storeFile = file(keystorePath)
+      storePassword = System.getenv("STORE_PASSWORD")
+      keyAlias = "upload"
+      keyPassword = System.getenv("KEY_PASSWORD")
     }
     if (file("${rootDir}/debug.keystore").exists()) {
       create("debugConfig") {
@@ -115,6 +115,8 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
+  implementation(libs.play.app.update)
+  implementation(libs.play.app.update.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

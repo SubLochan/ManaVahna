@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import android.app.Activity
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.example.ui.AppUpdateHelper
+import com.example.ui.UpdateStatus
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -59,6 +65,17 @@ fun DashboardScreen(
     var showVehiclePdfSuccessDialog by remember { mutableStateOf(false) }
     var reportingVehicleName by remember { mutableStateOf("") }
 
+    val updateHelper = remember { AppUpdateHelper.getInstance(context) }
+    val updateStatus by updateHelper.updateStatus.collectAsState()
+
+    val updateLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) {
+            Log.e("DashboardScreen", "In-app update aborted or failed: ${result.resultCode}")
+        }
+    }
+
     val vehicles by viewModel.vehicles.collectAsState()
     val allExpenses by viewModel.allExpenses.collectAsState()
     val allReminders by viewModel.pendingReminders.collectAsState()
@@ -102,6 +119,107 @@ fun DashboardScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // Play Store In-App App Update Notification Card
+            if (updateStatus is UpdateStatus.UpdateAvailable) {
+                val status = updateStatus as UpdateStatus.UpdateAvailable
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("app_update_notification_card"),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.NewReleases,
+                                    contentDescription = "అప్‌డేట్",
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "కొత్త అప్‌డేట్ అందుబాటులో ఉంది!",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "ManaVahana కోసం కొత్త అప్‌డేట్ అందుబాటులోకి వచ్చింది (వెర్షన్: ${status.versionCode}). గరిష్ట భద్రత మరియు స్థిరత్వం కోసం ఇప్పుడే అప్‌డేట్ చేయండి.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = { updateHelper.resetStatus() },
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                    ),
+                                    modifier = Modifier.testTag("update_later_button")
+                                ) {
+                                    Text("తర్వాత (Later)", fontWeight = FontWeight.Bold)
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                val activity = context as? Activity
+                                Button(
+                                    onClick = {
+                                        if (status.isSimulation) {
+                                            activity?.let { updateHelper.openPlayStore(it) }
+                                        } else {
+                                            val info = status.appUpdateInfo
+                                            if (activity != null && info != null) {
+                                                updateHelper.launchRealUpdate(
+                                                    activity = activity,
+                                                    appUpdateInfo = info,
+                                                    launcher = updateLauncher,
+                                                    isFlexible = status.isFlexibleAllowed
+                                                )
+                                            } else {
+                                                activity?.let { updateHelper.openPlayStore(it) }
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary,
+                                        contentColor = MaterialTheme.colorScheme.onTertiary
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.testTag("update_now_button")
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("ఇప్పుడే అప్‌డేట్ చేయి", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Logged-in User Profile Header
             item {
                 val currentUser by viewModel.currentUserState.collectAsState()

@@ -30,6 +30,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.ui.ManaVahanaViewModel
 import com.example.ui.pdf.PdfGenerator
+import com.example.ui.AppUpdateHelper
+import com.example.ui.UpdateStatus
 
 @Composable
 fun SettingsScreen(
@@ -360,7 +362,116 @@ fun SettingsScreen(
             }
         }
 
-        // Telugu Design Aesthetics Credit Card
+        // Play Store App Updates Card
+        item {
+            val updateHelper = remember { AppUpdateHelper.getInstance(context) }
+            val updateState by updateHelper.updateStatus.collectAsState()
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "App System Updates",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = "ManaVahana matches your device Play Store configuration. Keep track of immediate or flexible releases and verify schema structures are completely preserved.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+
+                    // Display current update status text
+                    val currentStatusText = when (updateState) {
+                        is UpdateStatus.Idle -> "No update checking has run yet."
+                        is UpdateStatus.Checking -> "Checking Google Play Store for active rolls..."
+                        is UpdateStatus.UpToDate -> "ManaVahana is completely up to date! (Version: 1.0)"
+                        is UpdateStatus.UpdateAvailable -> {
+                            val info = updateState as UpdateStatus.UpdateAvailable
+                            "Update Available! Version Code: ${info.versionCode} ${if (info.isSimulation) "(SIMULATION)" else ""}"
+                        }
+                        is UpdateStatus.Error -> "Store check failed: ${(updateState as UpdateStatus.Error).message}"
+                    }
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = when (updateState) {
+                                    is UpdateStatus.UpdateAvailable -> Icons.Default.NewReleases
+                                    is UpdateStatus.Checking -> Icons.Default.Sync
+                                    is UpdateStatus.UpToDate -> Icons.Default.CheckCircle
+                                    else -> Icons.Default.Info
+                                },
+                                contentDescription = null,
+                                tint = when (updateState) {
+                                    is UpdateStatus.UpdateAvailable -> MaterialTheme.colorScheme.tertiary
+                                    is UpdateStatus.UpToDate -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = currentStatusText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { updateHelper.checkForUpdates() },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Check Updates", fontSize = 11.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = { updateHelper.triggerSimulation(isFlexible = true) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Duo, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Simulate Release", fontSize = 11.sp)
+                        }
+                    }
+
+                    if (updateState is UpdateStatus.UpdateAvailable) {
+                        Button(
+                            onClick = { updateHelper.resetStatus() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Reset Update Status Tracker", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Telugu Cultural Aesthetics
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
