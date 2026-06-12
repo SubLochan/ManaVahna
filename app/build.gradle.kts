@@ -9,8 +9,8 @@ plugins {
 
 android {
   namespace = "com.example"
-  compileSdk = 34
-  ndkVersion = "25.1.8937393"
+    compileSdk = 36
+    ndkVersion = "25.1.8937393"
 
   defaultConfig {
     applicationId = "com.Lochan.ManaVahana"
