@@ -30,6 +30,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Trigger automatic Google Play Store In-App App Update check on startup
+        try {
+            com.example.ui.AppUpdateHelper.getInstance(this).checkForUpdates()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         val app = application as ManaVahanaApplication
         val repository = app.repository
         val preferencesRepository = app.userPreferencesRepository
