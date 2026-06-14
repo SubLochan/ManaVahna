@@ -130,7 +130,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(Localizer.get("security_settings", langCode), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -295,7 +295,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Backup & Export Tools", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    
+
                     Text("Local Backup & Restore", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                     Text(
                         "ManaVahana is 100% offline-first. Save all your vehicles, logs, expenses, docs, and reminders as a local JSON file, or restore data instantly by choosing a local backup file.",
@@ -421,6 +421,11 @@ fun SettingsScreen(
         item {
             val updateHelper = remember { AppUpdateHelper.getInstance(context) }
             val updateState by updateHelper.updateStatus.collectAsState()
+            val livePlayStoreVersion by updateHelper.livePlayStoreVersion.collectAsState()
+
+            LaunchedEffect(Unit) {
+                updateHelper.fetchPlayStoreVersionDirectly()
+            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -453,7 +458,6 @@ fun SettingsScreen(
                         is UpdateStatus.Error -> "Store check failed: ${(updateState as UpdateStatus.Error).message}"
                     }
 
-                    // Retrieve installed app details dynamically
                     val packageInfo = remember(context) {
                         try {
                             context.packageManager.getPackageInfo(context.packageName, 0)
@@ -467,17 +471,6 @@ fun SettingsScreen(
                     } else {
                         @Suppress("DEPRECATION")
                         packageInfo?.versionCode?.toLong() ?: 1L
-                    }
-
-                    val playStoreVersionToShow = when (updateState) {
-                        is UpdateStatus.Idle -> "Not checked yet"
-                        is UpdateStatus.Checking -> "Retrieving..."
-                        is UpdateStatus.UpToDate -> "$installedVersionName (Code: $installedVersionCode)"
-                        is UpdateStatus.UpdateAvailable -> {
-                            val info = updateState as UpdateStatus.UpdateAvailable
-                            "Code: ${info.versionCode} ${if (info.isSimulation) "(Simulation)" else ""}"
-                        }
-                        is UpdateStatus.Error -> "Unavailable"
                     }
 
                     Surface(
@@ -499,7 +492,7 @@ fun SettingsScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = playStoreVersionToShow,
+                                    text = livePlayStoreVersion,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.primary
@@ -657,7 +650,7 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
                     )
-                    
+
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         TeluguBullet("కుంకుమ బొట్టు (Kumkuma) Red", "Represents protection, visual highlight, and festive identity.")
                         TeluguBullet("పసుపు తోరణం (Turmeric) Gold", "Represents auspicious beginnings, longevity, and bright visual safety.")
