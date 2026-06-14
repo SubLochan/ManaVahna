@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.manavahana"
   compileSdk = 36
   ndkVersion = "25.1.8937393"
 
@@ -16,18 +16,18 @@ android {
     applicationId = "com.Lochan.ManaVahana"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 5
+    versionName = "1.3"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/ManaVahna_key.jks"
       storeFile = file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+      keyAlias = "ManaVahnaKey"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     if (file("${rootDir}/debug.keystore").exists()) {

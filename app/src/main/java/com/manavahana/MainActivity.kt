@@ -1,4 +1,4 @@
-package com.example
+package com.manavahana
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,10 +19,10 @@ import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
-import com.example.ui.ManaVahanaViewModel
-import com.example.ui.ManaVahanaViewModelFactory
-import com.example.ui.screens.*
-import com.example.ui.theme.ManaVahanaTheme
+import com.manavahana.ui.ManaVahanaViewModel
+import com.manavahana.ui.ManaVahanaViewModelFactory
+import com.manavahana.ui.screens.*
+import com.manavahana.ui.theme.ManaVahanaTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -32,14 +32,14 @@ class MainActivity : ComponentActivity() {
 
         // Trigger automatic Google Play Store In-App App Update check on startup
         try {
-            com.example.ui.AppUpdateHelper.getInstance(this).checkForUpdates()
+            com.manavahana.ui.AppUpdateHelper.getInstance(this).checkForUpdates()
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
         // Trigger immediate background reminder & document expiry check on startup
         try {
-            val reminderWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>().build()
+            val reminderWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.manavahana.worker.ReminderWorker>().build()
             androidx.work.WorkManager.getInstance(this).enqueue(reminderWorkRequest)
         } catch (e: Exception) {
             e.printStackTrace()

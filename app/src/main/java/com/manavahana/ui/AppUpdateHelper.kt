@@ -1,4 +1,4 @@
-package com.example.ui
+package com.manavahana.ui
 
 import android.Manifest
 import android.app.Activity

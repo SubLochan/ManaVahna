@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.manavahana.ui.screens
 
 import android.content.Intent
 import android.net.Uri
@@ -29,10 +29,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.example.ui.ManaVahanaViewModel
-import com.example.ui.pdf.PdfGenerator
-import com.example.ui.AppUpdateHelper
-import com.example.ui.UpdateStatus
+import com.manavahana.ui.ManaVahanaViewModel
+import com.manavahana.ui.pdf.PdfGenerator
+import com.manavahana.ui.AppUpdateHelper
+import com.manavahana.ui.UpdateStatus
 
 @Composable
 fun SettingsScreen(
@@ -507,7 +507,7 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             try {
-                                val request = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>().build()
+                                val request = androidx.work.OneTimeWorkRequestBuilder<com.manavahana.worker.ReminderWorker>().build()
                                 androidx.work.WorkManager.getInstance(context).enqueue(request)
                                 Toast.makeText(context, "Scanning document expiry states & publishing alerts...", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
