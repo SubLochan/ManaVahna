@@ -36,13 +36,16 @@ class ManaVahanaViewModel(
     val themeMode = preferencesRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
 
+    val selectedLanguage = preferencesRepository.selectedLanguage
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     // User Session / Offline Profile State Flow
     val currentUserState = flow {
         emit(
             UserProfile(
                 userId = 222,
                 email = "owner@manavahana.local",
-                name = "యజమాని (Owner)"
+                name = "యజమాని"
             )
         )
     }.stateIn(
@@ -51,7 +54,7 @@ class ManaVahanaViewModel(
         UserProfile(
             userId = 222,
             email = "owner@manavahana.local",
-            name = "యజమాని (Owner)"
+            name = "యజమాని"
         )
     )
 
@@ -105,6 +108,12 @@ class ManaVahanaViewModel(
     fun setThemeMode(mode: String) {
         viewModelScope.launch {
             preferencesRepository.setThemeMode(mode)
+        }
+    }
+
+    fun selectLanguage(langCode: String) {
+        viewModelScope.launch {
+            preferencesRepository.saveSelectedLanguage(langCode)
         }
     }
 

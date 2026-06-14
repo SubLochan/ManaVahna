@@ -17,10 +17,15 @@ class UserPreferencesRepository(private val context: Context) {
         private val IS_PIN_LOCK_ENABLED = booleanPreferencesKey("is_pin_lock_enabled")
         private val IS_FINGERPRINT_ENABLED = booleanPreferencesKey("is_fingerprint_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[THEME_MODE] ?: "system"
+    }
+
+    val selectedLanguage: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[SELECTED_LANGUAGE]
     }
 
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -68,6 +73,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE] = mode
+        }
+    }
+
+    suspend fun saveSelectedLanguage(lang: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SELECTED_LANGUAGE] = lang
         }
     }
 }

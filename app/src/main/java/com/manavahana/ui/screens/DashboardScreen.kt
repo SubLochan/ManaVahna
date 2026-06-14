@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.manavahana.data.model.*
 import com.manavahana.ui.ManaVahanaViewModel
 import com.manavahana.ui.pdf.PdfGenerator
+import com.manavahana.ui.Localizer
 import coil.compose.AsyncImage
 import android.net.Uri
 import android.content.Intent
@@ -61,6 +62,8 @@ fun DashboardScreen(
     onNavigateToAddFuel: () -> Unit
 ) {
     val context = LocalContext.current
+    val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+    val langCode = selectedLanguage ?: "en"
     var generatedVehiclePdfUri by remember { mutableStateOf<Uri?>(null) }
     var showVehiclePdfSuccessDialog by remember { mutableStateOf(false) }
     var reportingVehicleName by remember { mutableStateOf("") }
@@ -263,7 +266,7 @@ fun DashboardScreen(
 
                                 Column {
                                     Text(
-                                        text = "నమస్కారం, ${currentUser!!.name}!",
+                                        text = if (langCode == "te") "నమస్కారం, ${currentUser!!.name}!" else "Hello, ${currentUser!!.name}!",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer

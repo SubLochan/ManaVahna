@@ -75,13 +75,17 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             ManaVahanaTheme(darkTheme = isDarkTheme) {
-                val navController = rememberNavController()
-                val currentBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = currentBackStackEntry?.destination?.route
+                val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+                val langCode = selectedLanguage ?: "en"
 
-                val isPinVerified by viewModel.isPinVerified.collectAsState()
-                val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
-                val currentUser by viewModel.currentUserState.collectAsState()
+                CompositionLocalProvider(com.manavahana.ui.LocalAppLanguage provides langCode) {
+                    val navController = rememberNavController()
+                    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = currentBackStackEntry?.destination?.route
+
+                    val isPinVerified by viewModel.isPinVerified.collectAsState()
+                    val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
+                    val currentUser by viewModel.currentUserState.collectAsState()
 
                 // List of destinations that require the Bottom Navigation Bar
                 val bottomNavDestinations = listOf(
@@ -104,12 +108,12 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.testTag("app_navigator")
                             ) {
                                 val navItems = listOf(
-                                    BottomNavItem("Dashboard", "dashboard", Icons.Default.Dashboard),
-                                    BottomNavItem("Fuel", "fuel_logs", Icons.Default.LocalGasStation),
-                                    BottomNavItem("Services", "service_logs", Icons.Default.Build),
-                                    BottomNavItem("Expenses", "expenses", Icons.Default.Payments),
-                                    BottomNavItem("Vault", "document_vault", Icons.Default.FolderZip),
-                                    BottomNavItem("Settings", "settings", Icons.Default.Settings)
+                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_dashboard", langCode), "dashboard", Icons.Default.Dashboard),
+                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_fuel", langCode), "fuel_logs", Icons.Default.LocalGasStation),
+                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_services", langCode), "service_logs", Icons.Default.Build),
+                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_expenses", langCode), "expenses", Icons.Default.Payments),
+                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_vault", langCode), "document_vault", Icons.Default.FolderZip),
+                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_settings", langCode), "settings", Icons.Default.Settings)
                                 )
 
                                 navItems.forEach { item ->
@@ -143,6 +147,11 @@ class MainActivity : ComponentActivity() {
                         composable("splash") {
                             SplashScreen(
                                 viewModel = viewModel,
+                                onNavigateToLanguageSelection = {
+                                    navController.navigate("language_selection") {
+                                        popUpTo("splash") { inclusive = true }
+                                    }
+                                },
                                 onNavigateToOnboarding = {
                                     navController.navigate("onboarding") {
                                         popUpTo("splash") { inclusive = true }
@@ -156,6 +165,30 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToDashboard = {
                                     navController.navigate("dashboard") {
                                         popUpTo("splash") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        composable("language_selection") {
+                            LanguageSelectionScreen(
+                                viewModel = viewModel,
+                                onLangSelected = {
+                                    val isOnboarded = viewModel.isOnboardingCompleted.value
+                                    val isPinEnabled = viewModel.isPinLockEnabled.value
+                                    if (!isOnboarded) {
+                                        navController.navigate("onboarding") {
+                                            popUpTo("language_selection") { inclusive = true }
+                                        }
+                                    } else if (isPinEnabled) {
+                                        navController.navigate("login") {
+                                            popUpTo("language_selection") { inclusive = true }
+                                        }
+                                    } else {
+                                        viewModel.bypassPinVerification()
+                                        navController.navigate("dashboard") {
+                                            popUpTo("language_selection") { inclusive = true }
+                                        }
                                     }
                                 }
                             )
@@ -249,6 +282,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 }
 
 data class BottomNavItem(

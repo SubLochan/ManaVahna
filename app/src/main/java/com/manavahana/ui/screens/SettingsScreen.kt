@@ -33,6 +33,7 @@ import com.manavahana.ui.ManaVahanaViewModel
 import com.manavahana.ui.pdf.PdfGenerator
 import com.manavahana.ui.AppUpdateHelper
 import com.manavahana.ui.UpdateStatus
+import com.manavahana.ui.Localizer
 
 @Composable
 fun SettingsScreen(
@@ -42,6 +43,8 @@ fun SettingsScreen(
 
     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
+    val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+    val langCode = selectedLanguage ?: "en"
 
     val currentUserState by viewModel.currentUserState.collectAsState()
 
@@ -106,13 +109,13 @@ fun SettingsScreen(
     ) {
         item {
             Text(
-                text = "అమరికలు (Settings)",
+                text = Localizer.get("settings_title", langCode),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Configure your offline-first security & local database storage preferences.",
+                text = Localizer.get("settings_subtitle", langCode),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
@@ -126,7 +129,7 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Security Settings", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(Localizer.get("security_settings", langCode), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -137,8 +140,8 @@ fun SettingsScreen(
                             Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Secure PIN Lock", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Ask for PIN on app startup", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                Text(Localizer.get("secure_pin_lock", langCode), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(Localizer.get("pin_start_desc", langCode), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             }
                         }
                         Switch(
@@ -164,8 +167,8 @@ fun SettingsScreen(
                             Icon(Icons.Default.Fingerprint, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Biometric Authentication", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Enable fingerprint scan unlock", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                Text(Localizer.get("biometric_auth", langCode), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(Localizer.get("biometric_desc", langCode), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             }
                         }
                         Switch(
@@ -173,6 +176,57 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setFingerprintEnabled(it) },
                             modifier = Modifier.testTag("biometric_switch")
                         )
+                    }
+                }
+            }
+        }
+
+        // Language Selection Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().testTag("language_selection_settings_card"),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = Localizer.get("settings_lang_title", langCode),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = Localizer.get("settings_lang_desc", langCode),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Localizer.LANGUAGES.forEach { option ->
+                            val isSelected = langCode == option.code
+                            Button(
+                                onClick = {
+                                    viewModel.selectLanguage(option.code)
+                                    Toast.makeText(context, Localizer.get("toast_lang_changed", option.code), Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp)
+                                    .testTag("settings_lang_btn_${option.code}"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Text(text = option.displayName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -391,12 +445,67 @@ fun SettingsScreen(
                     val currentStatusText = when (updateState) {
                         is UpdateStatus.Idle -> "No update checking has run yet."
                         is UpdateStatus.Checking -> "Checking Google Play Store for active rolls..."
-                        is UpdateStatus.UpToDate -> "ManaVahana is completely up to date! (Version: 1.0)"
+                        is UpdateStatus.UpToDate -> "ManaVahana is completely up to date!"
                         is UpdateStatus.UpdateAvailable -> {
                             val info = updateState as UpdateStatus.UpdateAvailable
-                            "Update Available! Version Code: ${info.versionCode} ${if (info.isSimulation) "(SIMULATION)" else ""}"
+                            "Update Available! New Version Code: ${info.versionCode} ${if (info.isSimulation) "(SIMULATION)" else ""}"
                         }
                         is UpdateStatus.Error -> "Store check failed: ${(updateState as UpdateStatus.Error).message}"
+                    }
+
+                    // Retrieve installed app details dynamically
+                    val packageInfo = remember(context) {
+                        try {
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    val installedVersionName = packageInfo?.versionName ?: "1.0"
+                    val installedVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        packageInfo?.longVersionCode ?: 1L
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageInfo?.versionCode?.toLong() ?: 1L
+                    }
+
+                    val playStoreVersionToShow = when (updateState) {
+                        is UpdateStatus.Idle -> "Not checked yet"
+                        is UpdateStatus.Checking -> "Retrieving..."
+                        is UpdateStatus.UpToDate -> "$installedVersionName (Code: $installedVersionCode)"
+                        is UpdateStatus.UpdateAvailable -> {
+                            val info = updateState as UpdateStatus.UpdateAvailable
+                            "Code: ${info.versionCode} ${if (info.isSimulation) "(Simulation)" else ""}"
+                        }
+                        is UpdateStatus.Error -> "Unavailable"
+                    }
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Current Version:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = playStoreVersionToShow,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
 
                     Surface(
@@ -490,7 +599,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "రిమైండర్ & గడువు అలర్ట్ సిస్టమ్",
+                            text = Localizer.get("doc_expiry_system", langCode),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary

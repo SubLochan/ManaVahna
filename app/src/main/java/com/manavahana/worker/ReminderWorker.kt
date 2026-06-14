@@ -127,7 +127,12 @@ class ReminderWorker(
         return Result.success()
     }
 
-    private fun sendNotification(id: Int, title: String, message: String) {
+    private suspend fun sendNotification(id: Int, title: String, message: String) {
+        val app = applicationContext as? ManaVahanaApplication
+        val langCode = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull() ?: "en"
+        val translatedTitle = com.manavahana.ui.Localizer.translate(title, langCode)
+        val translatedMessage = com.manavahana.ui.Localizer.translate(message, langCode)
+
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -140,9 +145,9 @@ class ReminderWorker(
 
         val notification = NotificationCompat.Builder(applicationContext, "manavahana_reminders")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setContentTitle(translatedTitle)
+            .setContentText(translatedMessage)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(translatedMessage))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
