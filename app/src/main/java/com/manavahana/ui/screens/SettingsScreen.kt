@@ -130,7 +130,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(Localizer.get("security_settings", langCode), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-
+                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -295,7 +295,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Backup & Export Tools", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-
+                    
                     Text("Local Backup & Restore", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                     Text(
                         "ManaVahana is 100% offline-first. Save all your vehicles, logs, expenses, docs, and reminders as a local JSON file, or restore data instantly by choosing a local backup file.",
@@ -650,7 +650,7 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
                     )
-
+                    
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         TeluguBullet("కుంకుమ బొట్టు (Kumkuma) Red", "Represents protection, visual highlight, and festive identity.")
                         TeluguBullet("పసుపు తోరణం (Turmeric) Gold", "Represents auspicious beginnings, longevity, and bright visual safety.")

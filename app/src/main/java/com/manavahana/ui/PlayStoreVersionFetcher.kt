@@ -32,7 +32,7 @@ object PlayStoreVersionFetcher {
                     return@withContext null
                 }
                 val html = response.body?.string() ?: return@withContext null
-
+                
                 // Primary Parser: HTML Schema structured JSON-LD (Search engines rely heavily on this)
                 // Looks for: "softwareVersion":"X.Y.Z"
                 val schemaPattern = Pattern.compile("\"softwareVersion\"\\s*:\\s*\"([^\"]+)\"")

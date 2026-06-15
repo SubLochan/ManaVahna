@@ -129,7 +129,8 @@ class ReminderWorker(
 
     private suspend fun sendNotification(id: Int, title: String, message: String) {
         val app = applicationContext as? ManaVahanaApplication
-        val langCode = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull() ?: "en"
+        val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()
+        val langCode = if (rawLang.isNullOrEmpty()) "en" else rawLang
         val translatedTitle = com.manavahana.ui.Localizer.translate(title, langCode)
         val translatedMessage = com.manavahana.ui.Localizer.translate(message, langCode)
 

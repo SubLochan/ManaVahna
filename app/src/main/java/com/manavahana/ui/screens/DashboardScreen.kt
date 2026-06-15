@@ -70,6 +70,7 @@ fun DashboardScreen(
 
     val updateHelper = remember { AppUpdateHelper.getInstance(context) }
     val updateStatus by updateHelper.updateStatus.collectAsState()
+    val livePlayStoreVersion by updateHelper.livePlayStoreVersion.collectAsState()
 
     val updateLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
@@ -153,7 +154,7 @@ fun DashboardScreen(
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Text(
-                                    text = "కొత్త అప్‌డేట్ అందుబాటులో ఉంది!",
+                                    text = Localizer.get("update_available_title", langCode),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -162,8 +163,14 @@ fun DashboardScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
+                            val versionStr = if (livePlayStoreVersion != "Retrieving..." && livePlayStoreVersion != "Not checked yet") {
+                                livePlayStoreVersion
+                            } else {
+                                "1.6"
+                            }
+
                             Text(
-                                text = "ManaVahana కోసం కొత్త అప్‌డేట్ అందుబాటులోకి వచ్చింది (వెర్షన్: ${status.versionCode}). గరిష్ట భద్రత మరియు స్థిరత్వం కోసం ఇప్పుడే అప్‌డేట్ చేయండి.",
+                                text = Localizer.get("update_available_desc", langCode).replace("%1\$s", versionStr),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
                             )
@@ -182,7 +189,7 @@ fun DashboardScreen(
                                     ),
                                     modifier = Modifier.testTag("update_later_button")
                                 ) {
-                                    Text("తర్వాత (Later)", fontWeight = FontWeight.Bold)
+                                    Text(Localizer.get("update_later", langCode), fontWeight = FontWeight.Bold)
                                 }
 
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -215,7 +222,7 @@ fun DashboardScreen(
                                 ) {
                                     Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("ఇప్పుడే అప్‌డేట్ చేయి", fontWeight = FontWeight.Bold)
+                                    Text(Localizer.get("update_now", langCode), fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

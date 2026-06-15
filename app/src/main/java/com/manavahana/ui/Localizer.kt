@@ -62,7 +62,11 @@ object Localizer {
             "reminders_header" to "Reminders & To-Dos",
             "doc_expiry_system" to "Reminder & Expiry Alert System",
             "scans_alert_desc" to "ManaVahana schedules secure background tasks to parse your vehicle insurance, pollution certificates, and personal document vaults. Get warned instantly on your status bar for upcoming dates and overdue tasks completely offline.",
-            "trigger_scan" to "Trigger Expiration Scan & Alerts"
+            "trigger_scan" to "Trigger Expiration Scan & Alerts",
+            "update_available_title" to "ManaVahana Update Available!",
+            "update_available_desc" to "Version %1\$s is available for ManaVahana. Update now.",
+            "update_later" to "Later",
+            "update_now" to "Update Now"
         ),
         "te" to mapOf(
             "app_title" to "మనవాహన",
@@ -111,7 +115,11 @@ object Localizer {
             "reminders_header" to "రిమైండర్లు & చేయవలసినవి",
             "doc_expiry_system" to "రిమైండర్ & గడువు అలర్ట్ సిస్టమ్",
             "scans_alert_desc" to "మీ వాహన ఇన్సూరెన్స్, కాలుష్య ధృవీకరణ పత్రాలు మరియు వ్యక్తిగత పత్రాల వాల్ట్‌ను పార్స్ చేయడానికి మనవాహన బ్యాక్‌గ్రౌండ్ టాస్క్‌లను షెడ్యూల్ చేస్తుంది. రాబోయే తేదీలు మరియు ఆలస్యమైన పనుల గురించి మీ స్థితి పట్టీ (Status Bar) పై అలర్ట్‌లను పూర్తిగా ఆఫ్‌లైన్‌లో పొందండి.",
-            "trigger_scan" to "ఎక్స్పైరేషన్ స్కాన్ & అలర్ట్‌లను ప్రారంభించండి"
+            "trigger_scan" to "ఎక్స్పైరేషన్ స్కాన్ & అలర్ట్‌లను ప్రారంభించండి",
+            "update_available_title" to "మనవాహన అప్‌డేట్ అందుబాటులో ఉంది!",
+            "update_available_desc" to "మనవాహన కోసం వెర్షన్ %1\$s అందుబాటులో ఉంది. ఇప్పుడే అప్‌డేట్ చేయండి.",
+            "update_later" to "తర్వాత (Later)",
+            "update_now" to "ఇప్పుడే అప్‌డేట్ చేయి"
         ),
         "hi" to mapOf(
             "app_title" to "ManaVahana",
@@ -161,7 +169,11 @@ object Localizer {
             "reminders_header" to "अनुस्मारक और कार्य सूची",
             "doc_expiry_system" to "स्मरण पत्र और समाप्ति चेतावनी प्रणाली",
             "scans_alert_desc" to "मानवाहन ऑफ़लाइन रहकर आपके बीमा, क्रेडेंशियल्स और तिजोरी की समाप्ति का विश्लेषण करता है।",
-            "trigger_scan" to "समाप्ति तिथि जाँचें"
+            "trigger_scan" to "समाप्ति तिथि जाँचें",
+            "update_available_title" to "ManaVahana अपडेट उपलब्ध है!",
+            "update_available_desc" to "ManaVahana के लिए संस्करण %1\$s उपलब्ध है। अभी अपडेट करें।",
+            "update_later" to "बाद में (Later)",
+            "update_now" to "अभी अपडेट करें"
         )
     )
 
@@ -233,6 +245,11 @@ object Localizer {
     )
 
     private val teluguSubstringsMap = mapOf(
+        "మీ ఇన్సూరెన్స్" to "Your insurance",
+        "మీ పొల్యూషన్ సర్టిఫికేట్" to "Your pollution certificate",
+        "మీ వాహన ఇన్సూరెన్స్" to "Your vehicle insurance",
+        "మీకు ఒక రిమైండర్ టాస్క్ ఉంది." to "You have a reminder task.",
+        "గడువు తేదీ:" to "Expiry Date:",
         "యజమాని" to "Owner",
         "నమస్కారం" to "Hello",
         "అమరికలు" to "Settings",
@@ -337,6 +354,12 @@ object Localizer {
     )
 
     private val teluguSubstringsToHindiMap = mapOf(
+        "మీ ఇన్సూరెన్స్" to "आपका बीमा",
+        "మీ పొల్యూชั่น సర్టిఫికేట్" to "आपका प्रदूषण प्रमाण पत्र",
+        "మీ పొల్యూషన్ సర్టిఫికేట్" to "आपका प्रदूषण प्रमाण पत्र",
+        "మీ వాహన ఇన్సూరెన్స్" to "आपका वाहन बीमा",
+        "మీకు ఒక రిమైండర్ టాస్క్ ఉంది." to "आपके पास एक अनुस्मारक कार्य है।",
+        "గడువు తేదీ:" to "समाप्ति तिथि:",
         "యజమాని" to "मालिक",
         "నమస్కారం" to "नमस्ते",
         "అమరికలు" to "सेटिंग्स",
