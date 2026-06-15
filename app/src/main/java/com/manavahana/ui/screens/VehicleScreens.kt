@@ -83,6 +83,7 @@ fun AddVehicleScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
 
     var name by remember { mutableStateOf("") }
     var number by remember { mutableStateOf("") }
@@ -131,7 +132,7 @@ fun AddVehicleScreen(
         ) {
         item {
             Text(
-                "వాహనాన్ని చేర్చండి (Add Vehicle)",
+                if (langCode == "te") "వాహనాన్ని చేర్చండి" else if (langCode == "hi") "वाहन शामिल करें" else "Add Vehicle",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -201,7 +202,7 @@ fun AddVehicleScreen(
                 ) {
                     Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Select vehicle photo", fontSize = 13.sp)
+                    Text(getLocalizedText("Select vehicle photo", langCode), fontSize = 13.sp)
                 }
             }
         }
@@ -210,7 +211,7 @@ fun AddVehicleScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Vehicle Nickname (e.g., My Bullet, Red Swift)") },
+                label = { Text(getLocalizedText("Vehicle Nickname (e.g., My Bullet, Red Swift)", langCode)) },
                 modifier = Modifier.fillMaxWidth().testTag("vehicle_name_input"),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
@@ -221,7 +222,7 @@ fun AddVehicleScreen(
             OutlinedTextField(
                 value = number,
                 onValueChange = { number = it.uppercase() },
-                label = { Text("Vehicle registration Number (e.g., AP39UZ1234)") },
+                label = { Text(getLocalizedText("Vehicle registration Number (e.g., AP39UZ1234)", langCode)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters)
@@ -233,7 +234,7 @@ fun AddVehicleScreen(
                 OutlinedTextField(
                     value = brand,
                     onValueChange = { brand = it },
-                    label = { Text("Brand") },
+                    label = { Text(getLocalizedText("Brand", langCode)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
@@ -242,7 +243,7 @@ fun AddVehicleScreen(
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
-                    label = { Text("Model Name") },
+                    label = { Text(getLocalizedText("Model Name", langCode)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
@@ -252,7 +253,7 @@ fun AddVehicleScreen(
 
         item {
             Column {
-                Text("Select Vehicle Type", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(getLocalizedText("Select Vehicle Type", langCode), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -263,7 +264,7 @@ fun AddVehicleScreen(
                         FilterChip(
                             selected = isSel,
                             onClick = { selectedType = type },
-                            label = { Text(type) },
+                            label = { Text(getLocalizedText(type, langCode)) },
                             leadingIcon = { Icon(getVehicleIcon(type), contentDescription = null, modifier = Modifier.size(16.dp)) }
                         )
                     }
@@ -273,7 +274,7 @@ fun AddVehicleScreen(
 
         item {
             Column {
-                Text("Select Fuel Type", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(getLocalizedText("Select Fuel Type", langCode), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -284,7 +285,7 @@ fun AddVehicleScreen(
                         FilterChip(
                             selected = isSel,
                             onClick = { selectedFuel = fuel },
-                            label = { Text(fuel) }
+                            label = { Text(getLocalizedText(fuel, langCode)) }
                         )
                     }
                 }
@@ -295,21 +296,21 @@ fun AddVehicleScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 DatePickerField(
-                    label = "Purchase Date",
+                    label = getLocalizedText("Purchase Date", langCode),
                     timestamp = purchaseDate,
                     onDateSelected = { purchaseDate = it },
                     context = context,
                     sdf = sdf
                 )
                 DatePickerField(
-                    label = "Insurance Expiry",
+                    label = getLocalizedText("Insurance Expiry", langCode),
                     timestamp = insuranceExpiry,
                     onDateSelected = { insuranceExpiry = it },
                     context = context,
                     sdf = sdf
                 )
                 DatePickerField(
-                    label = "Pollution Certificate (PUC) Expiry",
+                    label = getLocalizedText("Pollution Certificate (PUC) Expiry", langCode),
                     timestamp = pollutionExpiry,
                     onDateSelected = { pollutionExpiry = it },
                     context = context,
@@ -346,7 +347,7 @@ fun AddVehicleScreen(
                     .height(52.dp)
                     .testTag("save_vehicle_button")
             ) {
-                Text("Save Vehicle Record", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(getLocalizedText("Save Vehicle Record", langCode), fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -414,6 +415,7 @@ fun VehicleDetailsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     LaunchedEffect(vehicleId) {
         viewModel.selectVehicle(vehicleId)
     }
@@ -567,7 +569,7 @@ fun VehicleDetailsScreen(
                             OutlinedTextField(
                                 value = serviceType,
                                 onValueChange = { serviceType = it },
-                                label = { Text("Service Type (e.g., Oil change, Wash)") },
+                                label = { Text(getLocalizedText("Service Type (e.g., Oil change, Wash)", langCode)) },
                                 modifier = Modifier.fillMaxWidth().testTag("service_type_input")
                             )
                         }
@@ -575,7 +577,7 @@ fun VehicleDetailsScreen(
                             OutlinedTextField(
                                 value = serviceCenter,
                                 onValueChange = { serviceCenter = it },
-                                label = { Text("Service Center Name") },
+                                label = { Text(getLocalizedText("Service Center Name", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -584,7 +586,7 @@ fun VehicleDetailsScreen(
                                 value = serviceOdometer,
                                 onValueChange = { serviceOdometer = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                label = { Text("Odometer Reading (km)") },
+                                label = { Text(getLocalizedText("Odometer Reading (km)", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -593,7 +595,7 @@ fun VehicleDetailsScreen(
                                 value = serviceCost,
                                 onValueChange = { serviceCost = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                label = { Text("Total Service Cost (₹)") },
+                                label = { Text(getLocalizedText("Total Service Cost (₹)", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -602,7 +604,7 @@ fun VehicleDetailsScreen(
                                 value = serviceNotes,
                                 onValueChange = { serviceNotes = it },
                                 maxLines = 3,
-                                label = { Text("Additional Notes") },
+                                label = { Text(getLocalizedText("Additional Notes", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -612,7 +614,7 @@ fun VehicleDetailsScreen(
                                 value = displayNext,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("Next Recall Date") },
+                                label = { Text(getLocalizedText("Next Recall Date", langCode)) },
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     val c = Calendar.getInstance()
                                     DatePickerDialog(context, { _, y, m, d ->
@@ -649,14 +651,14 @@ fun VehicleDetailsScreen(
                             }
                         }
                     ) {
-                        Text("Save Log")
+                        Text(getLocalizedText("Save Log", langCode))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         showAddServiceDialog = false
                         resetServiceFields()
-                    }) { Text("Cancel") }
+                    }) { Text(getLocalizedText("Cancel", langCode)) }
                 }
             )
         }
@@ -678,7 +680,7 @@ fun VehicleDetailsScreen(
                                     fuelLiters = it
                                 },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                label = { Text("Liters Filled") },
+                                label = { Text(getLocalizedText("Liters Filled", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -689,7 +691,7 @@ fun VehicleDetailsScreen(
                                     fuelTotalAmount = it
                                 },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                label = { Text("Total Cost (₹)") },
+                                label = { Text(getLocalizedText("Total Cost (₹)", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -698,7 +700,7 @@ fun VehicleDetailsScreen(
                                 value = fuelOdometer,
                                 onValueChange = { fuelOdometer = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                label = { Text("Odometer (km)") },
+                                label = { Text(getLocalizedText("Odometer (km)", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -706,7 +708,7 @@ fun VehicleDetailsScreen(
                             OutlinedTextField(
                                 value = fuelStationName,
                                 onValueChange = { fuelStationName = it },
-                                label = { Text("Fuel Center / Station") },
+                                label = { Text(getLocalizedText("Fuel Center / Station", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -716,7 +718,7 @@ fun VehicleDetailsScreen(
                                 value = displayDate,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("Date") },
+                                label = { Text(getLocalizedText("Date", langCode)) },
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     val c = Calendar.getInstance()
                                     DatePickerDialog(context, { _, y, m, d ->
@@ -755,14 +757,14 @@ fun VehicleDetailsScreen(
                             }
                         }
                     ) {
-                        Text("Save Fuel Log")
+                        Text(getLocalizedText("Save Fuel Log", langCode))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         showAddFuelDialog = false
                         resetFuelFields()
-                    }) { Text("Cancel") }
+                    }) { Text(getLocalizedText("Cancel", langCode)) }
                 }
             )
         }
@@ -781,12 +783,12 @@ fun VehicleDetailsScreen(
                             var expandedCat by remember { mutableStateOf(false) }
                             Box {
                                 OutlinedButton(onClick = { expandedCat = true }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Category: $expenseCategory")
+                                    Text(getLocalizedText("Category:", langCode) + " " + getLocalizedText(expenseCategory, langCode))
                                 }
                                 DropdownMenu(expanded = expandedCat, onDismissRequest = { expandedCat = false }) {
                                     listOf("Fuel", "Repairs", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous").forEach { cat ->
                                         DropdownMenuItem(
-                                            text = { Text(cat) },
+                                            text = { Text(getLocalizedText(cat, langCode)) },
                                             onClick = {
                                                 expenseCategory = cat
                                                 expandedCat = false
@@ -801,7 +803,7 @@ fun VehicleDetailsScreen(
                                 value = expenseAmount,
                                 onValueChange = { expenseAmount = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                label = { Text("Amount (₹)") },
+                                label = { Text(getLocalizedText("Amount (₹)", langCode)) },
                                 modifier = Modifier.fillMaxWidth().testTag("expense_amount_input")
                             )
                         }
@@ -809,7 +811,7 @@ fun VehicleDetailsScreen(
                             OutlinedTextField(
                                 value = expenseNotes,
                                 onValueChange = { expenseNotes = it },
-                                label = { Text("Notes / Description") },
+                                label = { Text(getLocalizedText("Notes / Description", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -837,14 +839,14 @@ fun VehicleDetailsScreen(
                             }
                         }
                     ) {
-                        Text("Save Expense")
+                        Text(getLocalizedText("Save Expense", langCode))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         showAddExpenseDialog = false
                         resetExpenseFields()
-                    }) { Text("Cancel") }
+                    }) { Text(getLocalizedText("Cancel", langCode)) }
                 }
             )
         }
@@ -863,12 +865,12 @@ fun VehicleDetailsScreen(
                             var expandedDoc by remember { mutableStateOf(false) }
                             Box {
                                 OutlinedButton(onClick = { expandedDoc = true }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Doc Type: $docType")
+                                    Text(getLocalizedText("Doc Type:", langCode) + " " + getLocalizedText(docType, langCode))
                                 }
                                 DropdownMenu(expanded = expandedDoc, onDismissRequest = { expandedDoc = false }) {
                                     listOf("RC", "Insurance", "Pollution Certificate", "License", "Service Bills").forEach { type ->
                                         DropdownMenuItem(
-                                            text = { Text(type) },
+                                            text = { Text(getLocalizedText(type, langCode)) },
                                             onClick = {
                                                 docType = type
                                                 expandedDoc = false
@@ -882,7 +884,7 @@ fun VehicleDetailsScreen(
                             OutlinedTextField(
                                 value = docTitle,
                                 onValueChange = { docTitle = it },
-                                label = { Text("Document Title (e.g., My RC Copy)") },
+                                label = { Text(getLocalizedText("Document Title (e.g., My RC Copy)", langCode)) },
                                 modifier = Modifier.fillMaxWidth().testTag("document_title_input")
                             )
                         }
@@ -892,7 +894,7 @@ fun VehicleDetailsScreen(
                                 value = displayExpiry,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("Expiry Date") },
+                                label = { Text(getLocalizedText("Expiry Date", langCode)) },
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     val c = Calendar.getInstance()
                                     DatePickerDialog(context, { _, y, m, d ->
@@ -910,7 +912,7 @@ fun VehicleDetailsScreen(
                             ) {
                                 Icon(Icons.Default.CloudUpload, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (docDocumentPath != null) "File: ${docDocumentPath?.substringAfterLast("/")} 👍" else "Select PDF or Image File")
+                                Text(if (docDocumentPath != null) getLocalizedText("File:", langCode) + " ${docDocumentPath?.substringAfterLast("/")} 👍" else getLocalizedText("Select PDF or Image File", langCode))
                             }
                         }
                     }
@@ -938,14 +940,14 @@ fun VehicleDetailsScreen(
                             }
                         }
                     ) {
-                        Text("Encrypt and Save")
+                        Text(getLocalizedText("Encrypt and Save", langCode))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         showAddDocumentDialog = false
                         resetDocumentFields()
-                    }) { Text("Cancel") }
+                    }) { Text(getLocalizedText("Cancel", langCode)) }
                 }
             )
         }
@@ -1495,6 +1497,7 @@ fun ServiceLogItem(log: ServiceLog, onEdit: () -> Unit, onDelete: () -> Unit) {
 @Composable
 fun FuelLogItem(log: FuelLog, mileage: Double? = null, onEdit: () -> Unit, onDelete: () -> Unit) {
     val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1504,15 +1507,66 @@ fun FuelLogItem(log: FuelLog, mileage: Double? = null, onEdit: () -> Unit, onDel
     ) {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Fuel Fill | ${log.litersFilled} Liters", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("Station: ${log.fuelStationName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                Text("Odo: ${log.odometerReading} km", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                Text(
+                    text = if (langCode == "te") {
+                        "ఇంధనం నింపడం | ${log.litersFilled} లీటర్లు"
+                    } else if (langCode == "hi") {
+                        "ईंधन भरना | ${log.litersFilled} लीटर"
+                    } else {
+                        "Fuel Fill | ${log.litersFilled} Liters"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = if (langCode == "te") {
+                        "కేంద్రం: ${log.fuelStationName}"
+                    } else if (langCode == "hi") {
+                        "स्टेशन: ${log.fuelStationName}"
+                    } else {
+                        "Station: ${log.fuelStationName}"
+                    },
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Text(
+                    text = if (langCode == "te") {
+                        "ఓడో: ${log.odometerReading} కి.మీ."
+                    } else if (langCode == "hi") {
+                        "ओडो: ${log.odometerReading} किमी"
+                    } else {
+                        "Odo: ${log.odometerReading} km"
+                    },
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
                 if (mileage != null && mileage > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("మైలేజ్ (Mileage): ${String.format("%.2f", mileage)} km/L", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                    Text(
+                        text = if (langCode == "te") {
+                            "మైలేజ్: ${String.format("%.2f", mileage)} కి.మీ./లీ."
+                        } else if (langCode == "hi") {
+                            "माइलेज: ${String.format("%.2f", mileage)} किमी/लीटर"
+                        } else {
+                            "Mileage: ${String.format("%.2f", mileage)} km/L"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Logged: ${sdf.format(Date(log.fuelDate))}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = if (langCode == "te") {
+                        "నమోదైంది: ${sdf.format(Date(log.fuelDate))}"
+                    } else if (langCode == "hi") {
+                        "लॉग किया गया: ${sdf.format(Date(log.fuelDate))}"
+                    } else {
+                        "Logged: ${sdf.format(Date(log.fuelDate))}"
+                    },
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("₹${log.totalAmount}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -1612,3 +1666,8 @@ fun DocumentItem(doc: Document, onEdit: () -> Unit, onDelete: () -> Unit) {
         }
     }
 }
+
+fun getLocalizedText(text: String, langCode: String): String {
+    return com.manavahana.ui.Localizer.getLocalizedText(text, langCode)
+}
+

@@ -45,6 +45,7 @@ fun SplashScreen(
     val isOnboarded by viewModel.isOnboardingCompleted.collectAsState()
     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
     val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+    val langCode = selectedLanguage ?: "en"
 
     LaunchedEffect(Unit) {
         delay(2000) // Beautiful splash hold
@@ -102,7 +103,7 @@ fun SplashScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "మన వాహనం - మన బాధ్యత", // "Our vehicle - Our responsibility" in Telugu
+                text = if (langCode == "te") "మన వాహనం - మన బాధ్యత" else if (langCode == "hi") "हमारी गाड़ी - हमारी जिम्मेदारी" else "Our vehicle - Our responsibility",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White.copy(alpha = 0.85f),
@@ -135,6 +136,9 @@ fun OnboardingScreen(
     var pinText by remember { mutableStateOf("") }
     var confirmPinText by remember { mutableStateOf("") }
     var errorPinMsg by remember { mutableStateOf<String?>(null) }
+    
+    val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+    val langCode = selectedLanguage ?: "en"
 
     Box(
         modifier = Modifier
@@ -167,12 +171,16 @@ fun OnboardingScreen(
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text("వాహన", fontSize = 42.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(
+                                    text = if (langCode == "te") "వాహన" else if (langCode == "hi") "वाहन" else "Vahana",
+                                    fontSize = 42.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             }
                         }
                         Spacer(modifier = Modifier.height(32.dp))
                         Text(
-                            text = "Welcome to ManaVahana",
+                            text = if (langCode == "te") "మనవాహనకు స్వాగతం" else if (langCode == "hi") "मानवाहन में आपका स्वागत है" else "Welcome to ManaVahana",
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground,
@@ -180,7 +188,13 @@ fun OnboardingScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "A modern vehicle expense tool inspired by Telugu design aesthetics. Track fuel logs, service history, and expiries securely on-device.",
+                            text = if (langCode == "te") {
+                                "తెలుగు డిజైన్ శైలితో రూపొందించబడిన ఆధునిక వాహన ఖర్చుల సాధనం. మీ మొబైల్‌లోనే ఇంధన లాగ్‌లు, సర్వీస్ హిస్టరీ మరియు గడువు తేదీలను సురక్షితంగా ట్రాక్ చేయండి."
+                            } else if (langCode == "hi") {
+                                "तेलुगु डिजाइन सौंदर्यशास्त्र से प्रेरित आधुनिक वाहन व्यय उपकरण। ईंधन लॉग, सेवा इतिहास और समाप्ति तिथियों को डिवाइस पर सुरक्षित रूप से ट्रैक करें।"
+                            } else {
+                                "A modern vehicle expense tool inspired by Telugu design aesthetics. Track fuel logs, service history, and expiries securely on-device."
+                            },
                             fontSize = 15.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,
@@ -195,7 +209,11 @@ fun OnboardingScreen(
                                 .testTag("onboarding_next_1"),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Text("Get Started", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (langCode == "te") "ప్రారంభించండి" else if (langCode == "hi") "शुरू करें" else "Get Started",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.Default.ChevronRight, contentDescription = null)
                         }
@@ -209,7 +227,7 @@ fun OnboardingScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Secure Your Car Data",
+                            text = if (langCode == "te") "మీ వాహన డేటాను సురక్షితం చేసుకోండి" else if (langCode == "hi") "अपने वाहन डेटा को सुरक्षित करें" else "Secure Your Car Data",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground,
@@ -217,7 +235,13 @@ fun OnboardingScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Set a 4-digit security PIN lock to safeguard your vehicle credentials and document files offline.",
+                            text = if (langCode == "te") {
+                                "మీ వాహనం ఆధారాలు మరియు డాక్యుమెంట్ ఫైళ్లను ఆఫ్‌లైన్‌లో భద్రపరచడానికి 4-అంకెల సెక్యూరిటీ పిన్ లాక్‌ని సెట్ చేయండి."
+                            } else if (langCode == "hi") {
+                                "ऑफ़लाइन रहते हुए अपने वाहन क्रेडेंशियल और दस्तावेज़ फ़ाइलों को सुरक्षित रखने के लिए 4-अंकीय सुरक्षा पिन लॉक सेट करें।"
+                            } else {
+                                "Set a 4-digit security PIN lock to safeguard your vehicle credentials and document files offline."
+                            },
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,
@@ -228,7 +252,11 @@ fun OnboardingScreen(
                         OutlinedTextField(
                             value = pinText,
                             onValueChange = { if (it.length <= 4) pinText = it },
-                            label = { Text("Enter 4-digit PIN") },
+                            label = { 
+                                Text(
+                                    if (langCode == "te") "4-అంకెల పిన్ సమర్పించండి" else if (langCode == "hi") "4-अंकीय पिन दर्ज करें" else "Enter 4-digit PIN"
+                                ) 
+                            },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true,
@@ -241,7 +269,11 @@ fun OnboardingScreen(
                         OutlinedTextField(
                             value = confirmPinText,
                             onValueChange = { if (it.length <= 4) confirmPinText = it },
-                            label = { Text("Confirm PIN") },
+                            label = { 
+                                Text(
+                                    if (langCode == "te") "పిన్ నిర్ధారించండి" else if (langCode == "hi") "पिन की पुष्टि करें" else "Confirm PIN"
+                                ) 
+                            },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true,
@@ -272,15 +304,18 @@ fun OnboardingScreen(
                                 },
                                 modifier = Modifier.height(52.dp)
                             ) {
-                                Text("Skip Security", color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    text = if (langCode == "te") "భద్రత దాటవేయి" else if (langCode == "hi") "सुरक्षा छोड़ें" else "Skip Security",
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
 
                             Button(
                                 onClick = {
                                     if (pinText.length != 4) {
-                                        errorPinMsg = "PIN must be exactly 4 digits"
+                                        errorPinMsg = if (langCode == "te") "పిన్ ఖచ్చితంగా 4 అంకెలు ఉండాలి" else if (langCode == "hi") "पिन ठीक 4 अंकों का होना चाहिए" else "PIN must be exactly 4 digits"
                                     } else if (pinText != confirmPinText) {
-                                        errorPinMsg = "PINs do not match"
+                                        errorPinMsg = if (langCode == "te") "పిన్ సరిపోలడం లేదు" else if (langCode == "hi") "पिन मेल नहीं खाते" else "PINs do not match"
                                     } else {
                                         viewModel.completeOnboarding(pinText)
                                         onComplete()
@@ -291,7 +326,9 @@ fun OnboardingScreen(
                                     .height(52.dp)
                                     .testTag("onboarding_secure_btn")
                             ) {
-                                Text("Secure App")
+                                Text(
+                                    if (langCode == "te") "యాప్‌ను సురక్షితం చేయి" else if (langCode == "hi") "ऐप सुरक्षित करें" else "Secure App"
+                                )
                             }
                         }
                     }
@@ -309,8 +346,17 @@ fun PinLockScreen(
     var pinText by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf(false) }
     val savedPin by viewModel.savedSecurityPin.collectAsState()
+    val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+    val langCode = selectedLanguage ?: "en"
 
     var showFingerprintDialog by remember { mutableStateOf(false) }
+    val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
+
+    LaunchedEffect(isFingerprintEnabled) {
+        if (isFingerprintEnabled) {
+            showFingerprintDialog = true
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -323,7 +369,7 @@ fun PinLockScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "మన వాహనం",
+            text = if (langCode == "te") "మన వాహనం" else if (langCode == "hi") "मानवाहन" else "ManaVahana",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -447,11 +493,21 @@ fun PinLockScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Fingerprint, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Biometric Authentication")
+                    Text(
+                        if (langCode == "te") "బయోమెట్రిక్ ప్రామాణీకరణ" else if (langCode == "hi") "बायोमेट्रिक प्रमाणीकरण" else "Biometric Authentication"
+                    )
                 }
             },
             text = {
-                Text("Confirm fingerprint or face scan sensor for offline access to ManaVahana.")
+                Text(
+                    if (langCode == "te") {
+                        "మనవాహనకు ఆఫ్‌లైన్ యాక్సెస్ కోసం వేలిముద్ర లేదా ఫేస్ స్కాన్ సెన్సార్‌ను ధృవీకరించండి."
+                    } else if (langCode == "hi") {
+                        "मानवाहन तक ऑफ़लाइन पहुंच के लिए फिंगरप्रिंट या फेस स्कैन सेंसर की पुष्टि करें।"
+                    } else {
+                        "Confirm fingerprint or face scan sensor for offline access to ManaVahana."
+                    }
+                )
             },
             confirmButton = {
                 TextButton(
@@ -461,12 +517,16 @@ fun PinLockScreen(
                         onSuccess()
                     }
                 ) {
-                    Text("Authenticate (Simulate)")
+                    Text(
+                        if (langCode == "te") "ధృవీకరించండి" else if (langCode == "hi") "प्रमाणित करें" else "Confirm"
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showFingerprintDialog = false }) {
-                    Text("Use PIN")
+                    Text(
+                        if (langCode == "te") "పిన్ ఉపయోగించండి" else if (langCode == "hi") "पिन का उपयोग करें" else "Use PIN"
+                    )
                 }
             }
         )

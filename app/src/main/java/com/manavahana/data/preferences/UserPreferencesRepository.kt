@@ -18,6 +18,23 @@ class UserPreferencesRepository(private val context: Context) {
         private val IS_FINGERPRINT_ENABLED = booleanPreferencesKey("is_fingerprint_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
+        private val JWT_TOKEN = stringPreferencesKey("jwt_token")
+    }
+
+    val jwtToken: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[JWT_TOKEN]
+    }
+
+    suspend fun saveJwtToken(token: String) {
+        context.dataStore.edit { preferences ->
+            preferences[JWT_TOKEN] = token
+        }
+    }
+
+    suspend fun clearJwtToken() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(JWT_TOKEN)
+        }
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { preferences ->

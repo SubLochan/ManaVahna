@@ -14,6 +14,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavType
@@ -74,7 +88,7 @@ class MainActivity : ComponentActivity() {
                 "dark" -> true
                 else -> isSystemInDarkTheme()
             }
-            ManaVahanaTheme(darkTheme = isDarkTheme) {
+            ManaVahanaTheme(themeMode = themeMode, darkTheme = isDarkTheme) {
                 val selectedLanguage by viewModel.selectedLanguage.collectAsState()
                 val langCode = selectedLanguage ?: "en"
 
@@ -87,6 +101,21 @@ class MainActivity : ComponentActivity() {
                     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
                     val currentUser by viewModel.currentUserState.collectAsState()
 
+                    // Secure Session Guard: Automatically redirect to AuthScreen when user is logged out (JWT is null)
+                    LaunchedEffect(currentUser, currentRoute) {
+                        if (currentUser == null &&
+                            currentRoute != null &&
+                            currentRoute != "splash" &&
+                            currentRoute != "language_selection" &&
+                            currentRoute != "onboarding" &&
+                            currentRoute != "auth"
+                        ) {
+                            navController.navigate("auth") {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+
                 // List of destinations that require the Bottom Navigation Bar
                 val bottomNavDestinations = listOf(
                     "dashboard",
@@ -97,6 +126,7 @@ class MainActivity : ComponentActivity() {
                     "settings"
                 )
 
+                var showQuickActions by remember { mutableStateOf(false) }
                 val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled) && currentUser != null
 
                 Scaffold(
@@ -104,41 +134,237 @@ class MainActivity : ComponentActivity() {
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
                         if (showBottomBar) {
-                            NavigationBar(
-                                modifier = Modifier.testTag("app_navigator")
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .navigationBarsPadding()
+                                    .testTag("app_navigator")
                             ) {
-                                val navItems = listOf(
-                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_dashboard", langCode), "dashboard", Icons.Default.Dashboard),
-                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_fuel", langCode), "fuel_logs", Icons.Default.LocalGasStation),
-                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_services", langCode), "service_logs", Icons.Default.Build),
-                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_expenses", langCode), "expenses", Icons.Default.Payments),
-                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_vault", langCode), "document_vault", Icons.Default.FolderZip),
-                                    BottomNavItem(com.manavahana.ui.Localizer.get("nav_settings", langCode), "settings", Icons.Default.Settings)
-                                )
+                                // Bottom Navigation bar capsule
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                                        .height(72.dp)
+                                        .align(Alignment.BottomCenter),
+                                    shape = RoundedCornerShape(percent = 50),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                    tonalElevation = 8.dp,
+                                    shadowElevation = 12.dp
+                                ) {
+                                    val leftItems = listOf(
+                                        BottomNavItem(com.manavahana.ui.Localizer.get("nav_dashboard", langCode), "dashboard", Icons.Default.Dashboard),
+                                        BottomNavItem(com.manavahana.ui.Localizer.get("nav_expenses", langCode), "expenses", Icons.Default.Payments)
+                                    )
+                                    val rightItems = listOf(
+                                        BottomNavItem(com.manavahana.ui.Localizer.get("nav_vault", langCode), "document_vault", Icons.Default.FolderZip),
+                                        BottomNavItem(com.manavahana.ui.Localizer.get("nav_settings", langCode), "settings", Icons.Default.Settings)
+                                    )
 
-                                navItems.forEach { item ->
-                                    val isSelected = currentRoute == item.route
-                                    NavigationBarItem(
-                                        selected = isSelected,
-                                        onClick = {
-                                            if (currentRoute != item.route) {
-                                                navController.navigate(item.route) {
-                                                    popUpTo(navController.graph.startDestinationId) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
+                                    Row(
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Left side items
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            horizontalArrangement = Arrangement.SpaceEvenly
+                                        ) {
+                                            leftItems.forEach { item ->
+                                                val isSelected = currentRoute == item.route
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(24.dp))
+                                                        .clickable {
+                                                            if (currentRoute != item.route) {
+                                                                navController.navigate(item.route) {
+                                                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                                    launchSingleTop = true
+                                                                    restoreState = true
+                                                                }
+                                                            }
+                                                        }
+                                                        .padding(10.dp)
+                                                        .testTag("nav_item_${item.route}"),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = item.icon,
+                                                        contentDescription = item.label,
+                                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                        modifier = Modifier.size(30.dp)
+                                                    )
                                                 }
                                             }
-                                        },
-                                        icon = { Icon(item.icon, contentDescription = item.label) },
-                                        modifier = Modifier.testTag("nav_item_${item.route}")
+                                        }
+
+                                        // FAB spacer
+                                        Spacer(modifier = Modifier.width(76.dp))
+
+                                        // Right side items
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            horizontalArrangement = Arrangement.SpaceEvenly
+                                        ) {
+                                            rightItems.forEach { item ->
+                                                val isSelected = currentRoute == item.route
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(24.dp))
+                                                        .clickable {
+                                                            if (currentRoute != item.route) {
+                                                                navController.navigate(item.route) {
+                                                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                                    launchSingleTop = true
+                                                                    restoreState = true
+                                                                }
+                                                            }
+                                                        }
+                                                        .padding(10.dp)
+                                                        .testTag("nav_item_${item.route}"),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = item.icon,
+                                                        contentDescription = item.label,
+                                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                        modifier = Modifier.size(30.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Centered Overlay Floating Action Button
+                                FloatingActionButton(
+                                    onClick = { showQuickActions = true },
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .offset(y = (-20).dp)
+                                        .size(54.dp)
+                                        .testTag("center_floating_fab"),
+                                    shape = CircleShape,
+                                    containerColor = Color(0xFFFFA000), // custom warning golden exactly like screenshot
+                                    contentColor = Color.Black,
+                                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DirectionsCar,
+                                        contentDescription = "Quick Action Car Menu",
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
                         }
                     }
                 ) { innerPadding ->
+                    if (showQuickActions) {
+                        Dialog(onDismissRequest = { showQuickActions = false }) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    androidx.compose.material3.Text(
+                                        text = if (langCode == "te") "వాహన త్వరిత చర్యలు" else if (langCode == "hi") "वाहन त्वरित कार्रवाई" else "Vehicle Quick Actions",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 18.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+
+                                    val actionsList = listOf(
+                                        Triple(
+                                            if (langCode == "te") "వాహనం జోడించు" else if (langCode == "hi") "वाहन शामिल करें" else "Add Vehicle",
+                                            "add_vehicle",
+                                            Icons.Default.DirectionsCar
+                                        ),
+                                        Triple(
+                                            if (langCode == "te") "ఖర్చు జోడించు" else if (langCode == "hi") "खर्च शामिल करें" else "Add Expense",
+                                            "expenses",
+                                            Icons.Default.Payments
+                                        ),
+                                        Triple(
+                                            if (langCode == "te") "సర్వీస్ రికార్డ్ జోడించు" else if (langCode == "hi") "सेवा रिकॉर्ड शामिल करें" else "Add Service Record",
+                                            "service_logs",
+                                            Icons.Default.Build
+                                        ),
+                                        Triple(
+                                            if (langCode == "te") "ఇంధనం పూరించండి" else if (langCode == "hi") "ईंधन भरें" else "Fill Fuel",
+                                            "fuel_logs",
+                                            Icons.Default.LocalGasStation
+                                        )
+                                    )
+
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        actionsList.forEach { (label, route, icon) ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(14.dp))
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                                    .clickable {
+                                                        showQuickActions = false
+                                                        navController.navigate(route)
+                                                    }
+                                                    .padding(14.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(36.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = icon,
+                                                        contentDescription = label,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+
+                                                androidx.compose.material3.Text(
+                                                    text = label,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    TextButton(
+                                        onClick = { showQuickActions = false },
+                                        modifier = Modifier.align(Alignment.End)
+                                    ) {
+                                        androidx.compose.material3.Text(
+                                            text = if (langCode == "te") "మూసివేయి" else if (langCode == "hi") "बंद करें" else "Close",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                     NavHost(
                         navController = navController,
                         startDestination = "splash",
@@ -198,8 +424,19 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(
                                 viewModel = viewModel,
                                 onComplete = {
-                                    navController.navigate("dashboard") {
+                                    navController.navigate("auth") {
                                         popUpTo("onboarding") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        composable("auth") {
+                            AuthScreen(
+                                viewModel = viewModel,
+                                onAuthSuccess = {
+                                    navController.navigate("dashboard") {
+                                        popUpTo("auth") { inclusive = true }
                                     }
                                 }
                             )

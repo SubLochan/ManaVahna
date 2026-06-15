@@ -436,4 +436,198 @@ object Localizer {
         }
         return text
     }
+
+    fun getLocalizedText(text: String, langCode: String?): String {
+        val code = langCode ?: "en"
+        return when (code) {
+            "te" -> when (text.trim()) {
+                "Select vehicle photo" -> "వాహనం ఫోటోను ఎంచుకోండి"
+                "Vehicle Nickname (e.g., My Bullet, Red Swift)" -> "వాహనం మారుపేరు (ఉదా: మై బుల్లెట్, రెడ్ స్విఫ్ట్)"
+                "Vehicle registration Number (e.g., AP39UZ1234)" -> "వాహన రిజిస్ట్రేషన్ నంబర్ (ఉదా: AP39UZ1234)"
+                "Brand" -> "బ్రాండ్"
+                "Model Name" -> "మోడల్ పేరు"
+                "Select Vehicle Type" -> "వాహనం రకాన్ని ఎంచుకోండి"
+                "Select Fuel Type" -> "ఇంధనం రకాన్ని ఎంచుకోండి"
+                "Purchase Date" -> "కొనుగోలు తేదీ"
+                "Insurance Expiry" -> "ఇన్సూరెన్స్ గడువు"
+                "Pollution Certificate (PUC) Expiry" -> "కాలుష్య గడువు (PUC)"
+                "Save Vehicle Record" -> "వాహన రికార్డును సేవ్ చేయి"
+                "Bike" -> "బైక్"
+                "Car" -> "కార్"
+                "Auto" -> "ఆటో"
+                "Truck" -> "ట్రక్"
+                "Petrol" -> "పెట్రోల్"
+                "Diesel" -> "డీజిల్"
+                "CNG" -> "సీఎన్‌జీ"
+                "Electric" -> "ఎలక్ట్రిక్"
+                "Hybrid" -> "హైబ్రిడ్"
+                
+                // Add/Edit screens & dialogs
+                "Edit Service Detail" -> "సర్వీస్ వివరాలను సవరించండి"
+                "Log Service Detail" -> "సర్వీస్ వివరాలను నమోదు చేయి"
+                "Service Type (e.g., Oil change, Wash)" -> "సర్వీస్ రకం (ఉదా: ఆయిల్ చేంజ్, వాష్)"
+                "Service Type (e.g., Oil, Engine, Wash)" -> "సర్వీస్ రకం (ఆయిల్, ఇంజిన్, వాష్)"
+                "Service Center Name" -> "సర్వీస్ సెంటర్ పేరు"
+                "Odometer Reading (km)" -> "ఓడోమీటర్ రీడింగ్ (కి.మీ.)"
+                "Total Service Cost (₹)" -> "మొత్తం సర్వీస్ ఖర్చు (₹)"
+                "Additional Notes" -> "అదనపు గమనికలు"
+                "Next Recall Date" -> "తదుపరి సర్వీస్ తేదీ"
+                "Save Log" -> "లాగ్‌ను సేవ్ చేయి"
+                "Cancel" -> "రద్దు చేయి"
+                "Liters Filled" -> "నింపిన లీటర్లు"
+                "Total Cost (₹)" -> "మొత్తం ధర (₹)"
+                "Odometer (km)" -> "ఓడోమీటర్ (కి.మీ.)"
+                "Fuel Center / Station" -> "ఇంధన కేంద్రం / స్టేషన్"
+                "Date" -> "తేదీ"
+                "Save Fuel Log" -> "ఇంధన లాగ్ సేవ్ చేయి"
+                "Amount (₹)" -> "మొత్తం (₹)"
+                "Notes / Description" -> "గమనికలు / వివరణ"
+                "Save Expense" -> "ఖర్చును సేవ్ చేయి"
+                "Document Title (e.g., My RC Copy)" -> "డాక్యుమెంట్ పేరు (ఉదా: నా ఆర్‌సీ కాపీ)"
+                "Expiry Date" -> "గడువు తేదీ"
+                "Select PDF or Image File" -> "పిడిఎఫ్ లేదా ఇమేజ్ ఫైల్ ఎంచుకోండి"
+                "Encrypt and Save" -> "ఎన్‌క్రిప్ట్ చేసి సేవ్ చేయి"
+                "Edit Vehicle Specifications" -> "వాహన వివరాలను సవరించండి"
+                "Change Photo" -> "ఫోటో మార్చండి"
+                "Vehicle Nickname" -> "వాహనం మారుపేరు"
+                "Registration Number" -> "రిజిస్ట్రేషన్ నంబర్"
+                "Vehicle Type" -> "వాహనం రకం"
+                "Fuel Type" -> "ఇంధనం రకం"
+                "Save Changes" -> "మార్పులను సేవ్ చేయి"
+                "No services logged. Tap + to record details." -> "ఏ సర్వీసులు నమోదు కాలేదు. వివరాలను రికార్డు చేయడానికి + నొక్కండి."
+                "No fuel fills logged. Tap + to add logs." -> "ఇంధనం నింపుకున్న వివరాలు నమోదు కాలేదు. లాగ్‌లను జోడించడానికి + నొక్కండి."
+                "No expenses logged. Tap + to add logs." -> "ఖర్చులు నమోదు కాలేదు. లాగ్‌లను జోడించడానికి + నొక్కండి."
+                "No documents saved. Tap + to store documents." -> "ఏ డాక్యుమెంట్లు సేవ్ చేయబడలేదు. డాక్యుమెంట్లు నిల్వ చేయడానికి + నొక్కండి."
+                "Please add a vehicle from the Dashboard first!" -> "దయచేసి మొదట డాష్‌బోర్డ్ నుండి వాహనాన్ని జోడించండి!"
+                "Edit Fuel Fill" -> "ఇంధన వివరాలను సవరించు"
+                "Log Fuel Fill" -> "ఇంధన వివరాలను నమోదు చేయి"
+                "Edit Expense Record" -> "ఖర్చు వివరాలను సవరించు"
+                "Add Expense Record" -> "ఖర్చు వివరాలను జోడించు"
+                "Edit Document Securely" -> "డాక్యుమెంట్‌ను సురక్షితంగా సవరించండి"
+                "Store Document Securely" -> "డాక్యుమెంట్‌ను సురక్షితంగా నిల్వ చేయి"
+                "No Expiry / Lifetime" -> "గడువు లేదు / లైఫ్‌టైమ్"
+                "Vehicle:" -> "వాహనం:"
+                "Doc Type:" -> "డాక్యుమెంట్ రకం:"
+                "Category:" -> "వర్గం:"
+                "Fuel" -> "ఇంధనం"
+                "Repairs" -> "మరమ్మతులు"
+                "Insurance" -> "ఇన్సూరెన్స్"
+                "Washing" -> "వాషింగ్"
+                "Accessories" -> "యాక్సెసరీస్"
+                "Parking" -> "పార్కింగ్"
+                "Toll" -> "టోల్"
+                "Miscellaneous" -> "ఇతరాలు"
+                "RC" -> "ఆర్సీ"
+                "Pollution Certificate" -> "కాలుష్య పత్రం"
+                "License" -> "లైసెన్స్"
+                "Service Bills" -> "సర్వీస్ బిల్లులు"
+                else -> {
+                    if (text.startsWith("Doc Type:")) {
+                        "డాక్యుమెంట్ రకం: " + translate(text.substringAfter("Doc Type:"), code)
+                    } else if (text.startsWith("Category:")) {
+                        "వర్గం: " + translate(text.substringAfter("Category:"), code)
+                    } else if (text.startsWith("File:")) {
+                        "ఫైల్: " + translate(text.substringAfter("File:"), code)
+                    } else {
+                        translate(text, code)
+                    }
+                }
+            }
+            "hi" -> when (text.trim()) {
+                "Select vehicle photo" -> "वाहन का फोटो चुनें"
+                "Vehicle Nickname (e.g., My Bullet, Red Swift)" -> "वाहन का उपनाम (जैसे: माई बुलेट, रेड स्विफ्ट)"
+                "Vehicle registration Number (e.g., AP39UZ1234)" -> "वाहन पंजीकरण संख्या (जैसे: AP39UZ1234)"
+                "Brand" -> "ब्रांड"
+                "Model Name" -> "मॉडल का नाम"
+                "Select Vehicle Type" -> "वाहन का प्रकार चुनें"
+                "Select Fuel Type" -> "ईंधन का प्रकार चुनें"
+                "Purchase Date" -> "खरीदने की तारीख"
+                "Insurance Expiry" -> "बीमा समाप्ति"
+                "Pollution Certificate (PUC) Expiry" -> "प्रदूषण प्रमाणपत्र (PUC) समाप्ति"
+                "Save Vehicle Record" -> "वाहन का रिकॉर्ड सहेजें"
+                "Bike" -> "बाइक"
+                "Car" -> "कार"
+                "Auto" -> "ऑटो"
+                "Truck" -> "ट्रक"
+                "Petrol" -> "पेट्रोल"
+                "Diesel" -> "डीजल"
+                "CNG" -> "सीएनजी"
+                "Electric" -> "इलेक्ट्रिक"
+                "Hybrid" -> "हाइब्रिड"
+                
+                // Add/Edit screens & dialogs
+                "Edit Service Detail" -> "सेवा विवरण संपादित करें"
+                "Log Service Detail" -> "सेवा विवरण दर्ज करें"
+                "Service Type (e.g., Oil change, Wash)" -> "सेवा प्रकार (जैसे: तेल परिवर्तन, धुलाई)"
+                "Service Type (e.g., Oil, Engine, Wash)" -> "सेवा प्रकार (तेल, इंजन, धुलाई)"
+                "Service Center Name" -> "सेवा केंद्र का नाम"
+                "Odometer Reading (km)" -> "ओडोमीटर रीडिंग (किमी)"
+                "Total Service Cost (₹)" -> "कुल सेवा लागत (₹)"
+                "Additional Notes" -> "अतिरिक्त नोट"
+                "Next Recall Date" -> "अगली सेवा तारीख"
+                "Save Log" -> "लॉग सहेजें"
+                "Cancel" -> "रद्द करें"
+                "Liters Filled" -> "लीटर भरा गया"
+                "Total Cost (₹)" -> "कुल लागत (₹)"
+                "Odometer (km)" -> "ओडोमीटर (किमी)"
+                "Fuel Center / Station" -> "ईंधन केंद्र / स्टेशन"
+                "Date" -> "तारीख"
+                "Save Fuel Log" -> "ईंधन लॉग सहेजें"
+                "Amount (₹)" -> "राशि (₹)"
+                "Notes / Description" -> "नोट्स / विवरण"
+                "Save Expense" -> "व्यय सहेजें"
+                "Document Title (e.g., My RC Copy)" -> "दस्तावेज़ का नाम (जैसे: आरसी कॉपी)"
+                "Expiry Date" -> "समाप्ति तिथि"
+                "Select PDF or Image File" -> "पीडीएफ या इमेज फाइल चुनें"
+                "Encrypt and Save" -> "एन्क्रिप्ट और सहेजें"
+                "Edit Vehicle Specifications" -> "वाहन विवरण संपादित करें"
+                "Change Photo" -> "फोटो बदलें"
+                "Vehicle Nickname" -> "वाहन का उपनाम"
+                "Registration Number" -> "पंजीकरण संख्या"
+                "Vehicle Type" -> "वाहन का प्रकार"
+                "Fuel Type" -> "ईंधन का प्रकार"
+                "Save Changes" -> "परिवर्तन सहेजें"
+                "No services logged. Tap + to record details." -> "कोई सेवा लॉग नहीं की गई है। विवरण दर्ज करने के लिए + टैप करें।"
+                "No fuel fills logged. Tap + to add logs." -> "कोई ईंधन लॉग नहीं। लॉग जोड़ने के लिए + दबाएं।"
+                "No expenses logged. Tap + to add logs." -> "कोई खर्च लॉग नहीं। लॉग जोडने के लिए + दबाएं।"
+                "No documents saved. Tap + to store documents." -> "कोई दस्तावेज सहेजा नहीं गया। दस्तावेज सहेजने के लिए + टैप करें।"
+                "Please add a vehicle from the Dashboard first!" -> "कृपया पहले डैशबोर्ड से एक वाहन जोड़ें!"
+                "Edit Fuel Fill" -> "ईंधन विवरण संपादित करें"
+                "Log Fuel Fill" -> "ईंधन विवरण दर्ज करें"
+                "Edit Expense Record" -> "व्यय विवरण संपादित करें"
+                "Add Expense Record" -> "व्यय विवरण जोड़ें"
+                "Edit Document Securely" -> "दस्तावेज़ संपादित करें"
+                "Store Document Securely" -> "दस्तावेज़ सुरक्षित रूप से संग्रहीत करें"
+                "No Expiry / Lifetime" -> "कोई समाप्ति नहीं / लाइफटाइम"
+                "Vehicle:" -> "वाहन:"
+                "Doc Type:" -> "दस्तावेज़ प्रकार:"
+                "Category:" -> "श्रेणी:"
+                "Fuel" -> "ईंधन"
+                "Repairs" -> "मरम्मत"
+                "Insurance" -> "बीमा"
+                "Washing" -> "धुलाई"
+                "Accessories" -> "सहायक उपकरण"
+                "Parking" -> "पार्किंग"
+                "Toll" -> "टोल"
+                "Miscellaneous" -> "विविध"
+                "RC" -> "आरसी"
+                "Pollution Certificate" -> "प्रदूषण प्रमाणपत्र"
+                "License" -> "लाइसेंस"
+                "Service Bills" -> "सर्विस बिल"
+                else -> {
+                    if (text.startsWith("Doc Type:")) {
+                        "दस्तावेज़ प्रकार: " + translate(text.substringAfter("Doc Type:"), code)
+                    } else if (text.startsWith("Category:")) {
+                        "श्रेणी: " + translate(text.substringAfter("Category:"), code)
+                    } else if (text.startsWith("File:")) {
+                        "फ़ाइल: " + translate(text.substringAfter("File:"), code)
+                    } else {
+                        translate(text, code)
+                    }
+                }
+            }
+            else -> text
+        }
+    }
 }
+

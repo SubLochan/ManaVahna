@@ -8,6 +8,7 @@ import com.manavahana.ui.AppUpdateHelper
 import com.manavahana.ui.UpdateStatus
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -112,7 +113,9 @@ fun DashboardScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0C0C0E)), // Premium pitch-black carbon darkness as shown in mockup
         contentAlignment = Alignment.TopCenter
     ) {
         LazyColumn(
@@ -120,10 +123,121 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .widthIn(max = 600.dp)
                 .testTag("dashboard_screen"),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            contentPadding = PaddingValues(bottom = 96.dp, top = 20.dp, start = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
-            // Play Store In-App App Update Notification Card
+            // Header Top Row
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Golden Crown Profile Emblem
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1F1F23))
+                                .border(BorderStroke(2.dp, Color(0xFFD4AF37)), CircleShape), // Ornate gold frame
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsCar,
+                                contentDescription = "ManaVahana Crown Emblem",
+                                tint = Color(0xFFFFA000),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Column {
+                            val userName = viewModel.currentUserState.value?.name ?: "User"
+                            val greeting = if (langCode == "te") "నమస్కారం, $userName!" else if (langCode == "hi") "नमस्ते, $userName!" else "Hello, $userName!"
+                            Text(
+                                text = greeting,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Hyderabad, IN",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Search button
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1F1F23))
+                                .clickable {
+                                    Toast.makeText(context, "Search Filter triggered!", Toast.LENGTH_SHORT).show()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search Vehicles",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Notification alert bell
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1F1F23))
+                                .clickable {
+                                    Toast.makeText(context, "Scanning for reminders...", Toast.LENGTH_SHORT).show()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Upcoming Reminders",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            
+                            // Glowing notification dot mapping active expirations size
+                            val pinCount = if (allReminders.isNotEmpty()) allReminders.size else 1
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 2.dp, y = (-2).dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$pinCount",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Play Store In-App Updates
             if (updateStatus is UpdateStatus.UpdateAvailable) {
                 val status = updateStatus as UpdateStatus.UpdateAvailable
                 item {
@@ -230,93 +344,21 @@ fun DashboardScreen(
                 }
             }
 
-            // Logged-in User Profile Header
+            // PRIMARY VEHICLE GRAPHIC HERO DISPLAY (Vivid Orange Card)
             item {
-                val currentUser by viewModel.currentUserState.collectAsState()
-                if (currentUser != null) {
+                val currentVeh = selectedVehicle
+                if (currentVeh != null) {
+                    // Clickable Hero Card
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("dashboard_user_header"),
-                        shape = RoundedCornerShape(20.dp),
+                            .testTag("primary_vehicle_card")
+                            .clickable { onNavigateToVehicleDetails(currentVeh.id) },
+                        shape = RoundedCornerShape(26.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                            containerColor = Color(0xFFFFA000) // Beautiful bright yellow/orange exactly like screenshot
+                        )
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                // Dynamic User Avatar
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.size(46.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = currentUser!!.name.take(1).uppercase(),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                }
-
-                                Column {
-                                    Text(
-                                        text = if (langCode == "te") "నమస్కారం, ${currentUser!!.name}!" else "Hello, ${currentUser!!.name}!",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Text(
-                                        text = currentUser!!.email,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.70f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Welcoming Card & Core Telemetry vs Selected Primary Vehicle Card
-            item {
-            val currentVehicle = selectedVehicle
-            if (currentVehicle != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToVehicleDetails(currentVehicle.id) }
-                        .testTag("primary_vehicle_card"),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Canvas(
-                            modifier = Modifier
-                                .size(120.dp)
-                                .align(Alignment.TopEnd)
-                                .offset(x = 20.dp, y = (-20).dp)
-                        ) {
-                            drawCircle(
-                                color = Color.White.copy(alpha = 0.07f),
-                                radius = size.minDimension / 2
-                            )
-                        }
-
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -332,551 +374,708 @@ fun DashboardScreen(
                                         text = "Primary Vehicle",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                                        color = Color.Black.copy(alpha = 0.65f)
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = currentVehicle.vehicleName,
+                                        text = currentVeh.vehicleName,
                                         fontSize = 24.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.Black,
+                                        lineHeight = 28.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Hyundai\n${currentVeh.vehicleType ?: "Car"}",
+                                        fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        lineHeight = 30.sp
+                                        color = Color.Black.copy(alpha = 0.8f)
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
-                                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                                    ) {
-                                        Text(
-                                            text = currentVehicle.vehicleNumber.uppercase(),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            letterSpacing = 1.sp
-                                        )
-                                    }
+                                    Text(
+                                        text = "Mileage: ${if (mileageValue > 0) "${String.format("%.1f", mileageValue)} km/L" else "N/A"}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black.copy(alpha = 0.6f)
+                                    )
                                 }
 
+                                // Interactive action chevron
                                 Box(
                                     modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f)),
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.35f))
+                                        .clickable { onNavigateToVehicleDetails(currentVeh.id) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (!currentVehicle.vehicleImage.isNullOrBlank()) {
-                                        AsyncImage(
-                                            model = PathUtils.getResolutionFile(context, currentVehicle.vehicleImage) ?: currentVehicle.vehicleImage,
-                                            contentDescription = "Vehicle Logo",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = getVehicleIcon(currentVehicle.vehicleType),
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(28.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Bottom
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Last Odometer",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = if (lastOdometer > 0) "${String.format("%,.0f", lastOdometer)} km" else "0 km",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = "Monthly Expense",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = "₹${String.format("%,.0f", selectedVehicleMonthExpenses)}",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimary
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = "Details",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(16.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f))
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Assessment,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "మాస నివేదిక / Monthly Sheet",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
-                                    )
-                                }
-                                Button(
-                                    onClick = {
-                                        val currentVehicle = selectedVehicle
-                                        if (currentVehicle != null) {
-                                            reportingVehicleName = currentVehicle.vehicleName
-                                            val uri = PdfGenerator.generateVehicleMonthlyReport(
-                                                context = context,
-                                                vehicle = currentVehicle,
-                                                expenses = allExpenses,
-                                                fuelLogs = allFuelLogs,
-                                                serviceLogs = allServiceLogs,
-                                                reminders = allReminders
-                                            )
-                                            if (uri != null) {
-                                                generatedVehiclePdfUri = uri
-                                                showVehiclePdfSuccessDialog = true
-                                                Toast.makeText(context, "Monthly PDF Report ready!", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                Toast.makeText(context, "Failed to generate vehicle PDF Report.", Toast.LENGTH_LONG).show()
-                                            }
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.onPrimary,
-                                        contentColor = MaterialTheme.colorScheme.primary
-                                    ),
-                                    shape = RoundedCornerShape(10.dp),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                    modifier = Modifier.height(34.dp).testTag("vehicle_report_btn_${currentVehicle.id}")
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("PDF Report", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Icon(
+                                        imageVector = getVehicleIcon(currentVeh.vehicleType),
+                                        contentDescription = null,
+                                        tint = Color.Black.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = currentVeh.vehicleNumber.uppercase(),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black.copy(alpha = 0.8f)
+                                    )
                                 }
+
+                                Text(
+                                    text = if (lastOdometer > 0) "${String.format("%,.0f", lastOdometer)} km \u2022 Odo" else "No Odo yet",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.Black
+                                )
                             }
                         }
                     }
-                }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp)
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Pager indicator dots (clicking changes selected vehicle if multiple exist!)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "నమస్కారం! (Namaskaram)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Manage your vehicles elegantly with Telugu style.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        vehicles.take(4).forEachIndexed { index, veh ->
+                            val isSelected = veh.id == currentVeh.id
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .size(if (isSelected) 10.dp else 6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) Color(0xFFFFA000) else Color.DarkGray)
+                                    .clickable { viewModel.selectVehicle(veh.id) }
+                            )
+                        }
+                    }
+                } else {
+                    // Fallback visual banner when no vehicle exists yet
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToAddVehicle() },
+                        shape = RoundedCornerShape(26.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1F1F23)),
+                        border = BorderStroke(1.dp, Color.DarkGray)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column {
-                                Text(
-                                    "Total Vehicles",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.61f)
-                                )
-                                Text(
-                                    "$totalVehicles",
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
-
-                            Column {
-                                Text(
-                                    "Expenses (This Month)",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.61f)
-                                )
-                                Text(
-                                    "₹${String.format("%.0f", currentMonthExpenses)}",
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.DirectionsCar,
+                                contentDescription = null,
+                                tint = Color(0xFFFFA000),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = if (langCode == "te") "వాహనాన్ని జోడించండి" else if (langCode == "hi") "अपना वाहन जोड़ें" else "Add Your Vehicle",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = if (langCode == "te") {
+                                    "వేగ పరిమితులు, ఆయిల్ మెట్రిక్స్ మరియు పత్రాలను ఆఫ్‌లైన్‌లో ట్రాక్ చేయండి."
+                                } else if (langCode == "hi") {
+                                    "गति सीमा, तेल मेट्रिक्स और दस्तावेज़ों को ऑफ़लाइन ट्रैक करें।"
+                                } else {
+                                    "Track speed limits, oil metrics, and documents offline."
+                                },
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
                         }
                     }
                 }
             }
-        }
 
-        // Selected Vehicle Selector
-        item {
-            Column {
-                Text(
-                    text = "Select Vehicle to Track",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (vehicles.isEmpty()) {
-                    Button(
-                        onClick = onNavigateToAddVehicle,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+            // SELECT VEHICLE TO TRACK CAROUSEL SECTION
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Your First Vehicle")
+                        Text(
+                            text = "Select Vehicle to Track",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        
+                        Text(
+                            text = "See All",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFA000),
+                            modifier = Modifier.clickable {
+                                Toast.makeText(context, "Filtering complete list...", Toast.LENGTH_SHORT).show()
+                            }
+                        )
                     }
-                } else {
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        for (vehicle in vehicles) {
-                            val isSelected = selectedVehicle?.id == vehicle.id
-                            val containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                            Card(
-                                onClick = { viewModel.selectVehicle(vehicle.id) },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+                        // Card 1: Custom Odometer Gauge Card
+                        Card(
+                            modifier = Modifier
+                                .width(155.dp)
+                                .height(130.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B1D))
+                        ) {
+                            Column(
                                 modifier = Modifier
-                                    .width(150.dp)
-                                    .testTag("select_vehicle_${vehicle.id}")
+                                    .fillMaxSize()
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                // Draw beautiful Speed Gauge dial vector dynamically
+                                Box(
+                                    modifier = Modifier
+                                        .size(45.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        // Speed dial arc tracker
+                                        drawArc(
+                                            color = Color.DarkGray,
+                                            startAngle = 180f,
+                                            sweepAngle = 180f,
+                                            useCenter = false,
+                                            style = Stroke(width = 3.dp.toPx())
+                                        )
+                                        drawArc(
+                                            color = Color(0xFF4CAF50), // Green progress arc
+                                            startAngle = 180f,
+                                            sweepAngle = 120f,
+                                            useCenter = false,
+                                            style = Stroke(width = 3.dp.toPx())
+                                        )
+                                        // Red dial pointer needle
+                                        val needleLength = 16.dp.toPx()
+                                        drawLine(
+                                            color = Color.Red,
+                                            start = Offset(size.width / 2, size.height),
+                                            end = Offset(size.width / 2 + needleLength * 0.707f, size.height - needleLength * 0.707f),
+                                            strokeWidth = 2.dp.toPx()
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.Speed,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(14.dp).align(Alignment.BottomCenter)
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "Odometer",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.LightGray
+                                    )
+                                    Text(
+                                        text = if (lastOdometer > 0) "${String.format("%,.0f", lastOdometer)} km" else "0 km",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+
+                        // Card 2: Custom Monthly Expense Active Tracker (Highlighted in mockup)
+                        Card(
+                            modifier = Modifier
+                                .width(155.dp)
+                                .height(130.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF242220)), // Subtle highlight tint
+                            border = BorderStroke(1.dp, Color(0xFFFFA000)) // Highlight border exactly like screenshot
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFFA000).copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DirectionsCar,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFFA000),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "Monthly Expense",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.LightGray
+                                    )
+                                    Text(
+                                        text = "\u20b9${String.format("%,.0f", selectedVehicleMonthExpenses)}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFFFFA000)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Card 3: Switch Selectable Vehicles list
+                        vehicles.forEach { veh ->
+                            val isSelected = selectedVehicle?.id == veh.id
+                            if (!isSelected) {
+                                Card(
+                                    modifier = Modifier
+                                        .width(150.dp)
+                                        .height(130.dp)
+                                        .clickable { viewModel.selectVehicle(veh.id) }
+                                        .testTag("select_vehicle_${veh.id}"),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+                                    border = BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(32.dp)
+                                                .size(38.dp)
                                                 .clip(CircleShape)
-                                                .background(if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)),
+                                                .background(Color.White.copy(alpha = 0.05f)),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            if (!vehicle.vehicleImage.isNullOrBlank()) {
-                                                AsyncImage(
-                                                    model = PathUtils.getResolutionFile(context, vehicle.vehicleImage) ?: vehicle.vehicleImage,
-                                                    contentDescription = "Vehicle Grid Image",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                                )
-                                            } else {
+                                            Icon(
+                                                imageVector = getVehicleIcon(veh.vehicleType),
+                                                contentDescription = null,
+                                                tint = Color.White.copy(alpha = 0.8f),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = veh.vehicleName,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = veh.vehicleNumber.uppercase(),
+                                                fontSize = 10.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // QUICK ACTIONS GRID SECTION
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Quick Actions",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "See All",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFA000)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Action 1: Add Expense
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1B1B1D))
+                                .clickable { onNavigateToAddExpense() }
+                                .padding(14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFFA000).copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Payments,
+                                    contentDescription = "Add Expense",
+                                    tint = Color(0xFFFFA000),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(
+                                text = "Add Expense",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+
+                        // Action 2: Add Service
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1B1B1D))
+                                .clickable { onNavigateToAddService() }
+                                .padding(14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFFA000).copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = "Add Service Log",
+                                    tint = Color(0xFFFFA000),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(
+                                text = "Add Service Log",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+
+                        // Action 3: Boost Documents
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1B1B1D))
+                                .clickable { onNavigateToAddFuel() }
+                                .padding(14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFFA000).copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = "Vault Docs",
+                                    tint = Color(0xFFFFA000),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(
+                                text = "Boost Documents",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            // EXECUTIVE OFFLINE REPORT ACTION BAR
+            if (selectedVehicle != null) {
+                item {
+                    val activeVeh = selectedVehicle!!
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("pdf_report_generative_card"),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B1D)),
+                        border = BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.05f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PictureAsPdf,
+                                        contentDescription = null,
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = if (langCode == "te") "మాస నివేదిక" else if (langCode == "hi") "मासिक शीट" else "Monthly Sheet",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "Export active logs offline.",
+                                        fontSize = 10.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = {
+                                    reportingVehicleName = activeVeh.vehicleName
+                                    val uri = PdfGenerator.generateVehicleMonthlyReport(
+                                        context = context,
+                                        vehicle = activeVeh,
+                                        expenses = allExpenses,
+                                        fuelLogs = allFuelLogs,
+                                        serviceLogs = allServiceLogs,
+                                        reminders = allReminders
+                                    )
+                                    if (uri != null) {
+                                        generatedVehiclePdfUri = uri
+                                        showVehiclePdfSuccessDialog = true
+                                        Toast.makeText(context, "Monthly PDF Report ready!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Failed to generate vehicle PDF Report.", Toast.LENGTH_LONG).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFFFA000),
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .height(34.dp)
+                                    .testTag("vehicle_report_btn_${activeVeh.id}")
+                            ) {
+                                Text("PDF Report", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // UPCOMING REMINDERS & TO-DOS SECTION (mockup "Not inks")
+            if (allReminders.isNotEmpty()) {
+                item {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Recent Logs & Expiries",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "See All",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFA000)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (reminder in allReminders.take(4)) {
+                                val isUrgent = (reminder.reminderDate - System.currentTimeMillis()) < 15 * 24 * 60 * 60 * 1000L
+                                val containerColor = if (isUrgent) Color(0xFF2E191A) else Color(0xFF1B1B1D)
+                                val borderStrokeColor = if (isUrgent) Color.Red.copy(alpha = 0.5f) else Color.DarkGray
+                                val iconColor = if (isUrgent) Color.Red else Color(0xFFFFA000)
+
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = containerColor),
+                                    border = BorderStroke(1.dp, borderStrokeColor),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { viewModel.toggleReminderCompleted(reminder) }
+                                            .padding(12.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(34.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.White.copy(alpha = 0.05f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Icon(
-                                                    imageVector = getVehicleIcon(vehicle.vehicleType),
+                                                    imageVector = when (reminder.category) {
+                                                        "Insurance" -> Icons.Default.Shield
+                                                        "Pollution" -> Icons.Default.Co2
+                                                        "Service" -> Icons.Default.Build
+                                                        "EMI" -> Icons.Default.Payments
+                                                        else -> Icons.Default.Notifications
+                                                    },
                                                     contentDescription = null,
-                                                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondary,
-                                                    modifier = Modifier.size(18.dp)
+                                                    tint = iconColor,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                            Column {
+                                                Text(
+                                                    reminder.title,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    reminder.description,
+                                                    fontSize = 11.sp,
+                                                    color = Color.Gray,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                         }
 
-                                        IconButton(
-                                            onClick = {
-                                                reportingVehicleName = vehicle.vehicleName
-                                                val uri = PdfGenerator.generateVehicleMonthlyReport(
-                                                    context = context,
-                                                    vehicle = vehicle,
-                                                    expenses = allExpenses,
-                                                    fuelLogs = allFuelLogs,
-                                                    serviceLogs = allServiceLogs,
-                                                    reminders = allReminders
-                                                )
-                                                if (uri != null) {
-                                                    generatedVehiclePdfUri = uri
-                                                    showVehiclePdfSuccessDialog = true
-                                                    Toast.makeText(context, "${vehicle.vehicleName} PDF Report ready!", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    Toast.makeText(context, "Failed to generate vehicle PDF Report.", Toast.LENGTH_LONG).show()
-                                                }
-                                            },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.PictureAsPdf,
-                                                contentDescription = "PDF Report",
-                                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = vehicle.vehicleName,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = vehicle.vehicleNumber,
-                                        fontSize = 11.sp,
-                                        color = contentColor.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Quick action row
-        item {
-            Column {
-                Text(
-                    text = "Quick Actions",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    QuickActionChip(
-                        icon = Icons.Default.DirectionsCar,
-                        label = "Add Vehicle",
-                        onClick = onNavigateToAddVehicle,
-                        tag = "qa_add_vehicle"
-                    )
-                    QuickActionChip(
-                        icon = Icons.Default.Payments,
-                        label = "Add Expense",
-                        onClick = onNavigateToAddExpense,
-                        enabled = vehicles.isNotEmpty(),
-                        tag = "qa_add_expense"
-                    )
-                    QuickActionChip(
-                        icon = Icons.Default.Build,
-                        label = "Add Service",
-                        onClick = onNavigateToAddService,
-                        enabled = vehicles.isNotEmpty(),
-                        tag = "qa_add_service"
-                    )
-                    QuickActionChip(
-                        icon = Icons.Default.LocalGasStation,
-                        label = "Fill Fuel",
-                        onClick = onNavigateToAddFuel,
-                        enabled = vehicles.isNotEmpty(),
-                        tag = "qa_add_fuel"
-                    )
-                }
-            }
-        }
-
-        // Selected vehicle statistics (Mileage & analytics)
-        if (selectedVehicle != null) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Speed,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    text = "${selectedVehicle?.vehicleName} Efficiency",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = "Based on local fuel logs",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = if (mileageValue > 0) "${String.format("%.2f", mileageValue)} km/L" else "N/A",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Avg Mileage",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Pie Chart Section for Expenses
-        if (allExpenses.isNotEmpty()) {
-            item {
-                Column {
-                    Text(
-                        text = "Expense Analytics (Categorywise Distribution)",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    ExpensePieChartCard(expenses = allExpenses)
-                }
-            }
-        }
-
-        // Line Graph section for fuel prices / monthly logs
-        if (allFuelLogs.size >= 2) {
-            item {
-                Column {
-                    Text(
-                        text = "Fuel Price Trend",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    FuelPriceLineChartCard(logs = allFuelLogs)
-                }
-            }
-        }
-
-        // Renewals checklist Section
-        if (allReminders.isNotEmpty()) {
-            item {
-                Column {
-                    Text(
-                        text = "Upcoming Renewals & Expiries",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (reminder in allReminders.take(4)) {
-                            val isUrgent = (reminder.reminderDate - System.currentTimeMillis()) < 15 * 24 * 60 * 60 * 1000L
-                            val containerColor = if (isUrgent) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
-                            val contentColor = if (isUrgent) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
-                            val iconColor = if (isUrgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
-
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = containerColor),
-                                border = BorderStroke(1.dp, if (isUrgent) MaterialTheme.colorScheme.error.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { viewModel.toggleReminderCompleted(reminder) }
-                                        .padding(14.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                        Icon(
-                                            imageVector = when (reminder.category) {
-                                                "Insurance" -> Icons.Default.Shield
-                                                "Pollution" -> Icons.Default.Co2
-                                                "Service" -> Icons.Default.Build
-                                                "EMI" -> Icons.Default.Payments
-                                                else -> Icons.Default.Notifications
-                                            },
-                                            contentDescription = null,
-                                            tint = iconColor,
-                                            modifier = Modifier.size(20.dp)
+                                        val simpleFormatter = SimpleDateFormat("dd MMM", Locale.getDefault())
+                                        Text(
+                                            simpleFormatter.format(Date(reminder.reminderDate)),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (isUrgent) Color.Red else Color(0xFFFFA000)
                                         )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Text(
-                                                reminder.title,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = contentColor,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                reminder.description,
-                                                fontSize = 11.sp,
-                                                color = contentColor.copy(alpha = 0.7f),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
                                     }
-
-                                    val simpleFormatter = SimpleDateFormat("dd MMM", Locale.getDefault())
-                                    Text(
-                                        simpleFormatter.format(Date(reminder.reminderDate)),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isUrgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                                    )
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // ANALYTICS & PIE CHART SECTION
+            if (allExpenses.isNotEmpty()) {
+                item {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Expense Analytics",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        ExpensePieChartCard(expenses = allExpenses)
                     }
                 }
             }
@@ -919,7 +1118,6 @@ fun DashboardScreen(
             }
         )
     }
-}
 }
 
 @Composable

@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,10 +24,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import com.manavahana.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.manavahana.ui.ManaVahanaViewModel
@@ -43,6 +53,7 @@ fun SettingsScreen(
 
     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
+    val savedPin by viewModel.savedSecurityPin.collectAsState()
     val selectedLanguage by viewModel.selectedLanguage.collectAsState()
     val langCode = selectedLanguage ?: "en"
 
@@ -100,6 +111,17 @@ fun SettingsScreen(
     var showPdfSuccessDialog by remember { mutableStateOf(false) }
     var generatedPdfUri by remember { mutableStateOf<Uri?>(null) }
 
+    var showPinSetupDialog by remember { mutableStateOf(false) }
+    var showPinDeactivateDialog by remember { mutableStateOf(false) }
+    var showBiometricEnrollDialog by remember { mutableStateOf(false) }
+
+    var pinSetupText by remember { mutableStateOf("") }
+    var pinConfirmText by remember { mutableStateOf("") }
+    var pinSetupError by remember { mutableStateOf("") }
+
+    var pinDeactivateText by remember { mutableStateOf("") }
+    var pinDeactivateError by remember { mutableStateOf("") }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -121,6 +143,75 @@ fun SettingsScreen(
             )
         }
 
+        // Logged-in User Profile Card with Logout functionality
+        item {
+            currentUserState?.let { user ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("user_profile_card"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.size(48.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = if (user.name.isNotEmpty()) user.name.take(1).uppercase() else "?",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = user.name,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = user.email,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = "Secure Session Active",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = {
+                                viewModel.logout()
+                                Toast.makeText(context, "Logged out successfully!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.testTag("settings_logout_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Log Out",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Security Configuration Card
         item {
             Card(
@@ -130,32 +221,73 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(Localizer.get("security_settings", langCode), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(Localizer.get("secure_pin_lock", langCode), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text(Localizer.get("pin_start_desc", langCode), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                Text(
+                                    text = if (isPinEnabled) {
+                                        if (langCode == "te") "పిన్ సక్రియంగా ఉంది (మార్చడానికి క్రింద క్లిక్ చేయండి)" else "Security PIN is active"
+                                    } else {
+                                        Localizer.get("pin_start_desc", langCode)
+                                    },
+                                    fontSize = 11.sp,
+                                    color = if (isPinEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
                             }
                         }
                         Switch(
                             checked = isPinEnabled,
-                            onCheckedChange = {
-                                if (it) {
-                                    viewModel.updatePin("1234") // Set default easily toggleable
-                                    Toast.makeText(context, "PIN is configured to default '1234'. Change in update panel.", Toast.LENGTH_SHORT).show()
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    if (savedPin.isNullOrBlank()) {
+                                        showPinSetupDialog = true
+                                    } else {
+                                        viewModel.updatePin(savedPin)
+                                    }
                                 } else {
-                                    viewModel.updatePin(null)
+                                    if (!savedPin.isNullOrBlank()) {
+                                        showPinDeactivateDialog = true
+                                    } else {
+                                        viewModel.updatePin(null)
+                                    }
                                 }
                             },
                             modifier = Modifier.testTag("pin_lock_switch")
                         )
+                    }
+
+                    if (isPinEnabled && !savedPin.isNullOrBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                                .clickable { showPinSetupDialog = true }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Password,
+                                contentDescription = "Change PIN",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = if (langCode == "te") "సెక్యూరిటీ పిన్‌ను మార్చండి" else if (langCode == "hi") "सुरक्षा पिन बदलें" else "Change 4-Digit Security PIN",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
                     Row(
@@ -173,7 +305,14 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = isFingerprintEnabled,
-                            onCheckedChange = { viewModel.setFingerprintEnabled(it) },
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    showBiometricEnrollDialog = true
+                                } else {
+                                    viewModel.setFingerprintEnabled(false)
+                                    Toast.makeText(context, if (langCode == "te") "బయోమెట్రిక్ ప్రామాణీకరణ నిలిపివేయబడింది" else "Biometrics disabled", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             modifier = Modifier.testTag("biometric_switch")
                         )
                     }
@@ -310,7 +449,10 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 try {
-                                    exportJsonLauncher.launch("manavahana_backup.json")
+                                    val userName = currentUserState?.name ?: "User"
+                                    val cleanUserName = userName.replace("\\s+".toRegex(), "_")
+                                    val backupFileName = "${cleanUserName}_ManaVahanBackup.json"
+                                    exportJsonLauncher.launch(backupFileName)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                     Toast.makeText(context, "Storage picker unavailable. Failed to launch backup.", Toast.LENGTH_LONG).show()
@@ -348,7 +490,10 @@ fun SettingsScreen(
                                 val jsonString = viewModel.exportBackupJsonString(context)
                                 val backupDir = java.io.File(context.cacheDir, "backups")
                                 if (!backupDir.exists()) backupDir.mkdirs()
-                                val backupFile = java.io.File(backupDir, "manavahana_backup.json")
+                                val userName = currentUserState?.name ?: "User"
+                                val cleanUserName = userName.replace("\\s+".toRegex(), "_")
+                                val backupFileName = "${cleanUserName}_ManaVahanBackup.json"
+                                val backupFile = java.io.File(backupDir, backupFileName)
                                 backupFile.writeText(jsonString, Charsets.UTF_8)
                                 val backupUri = androidx.core.content.FileProvider.getUriForFile(
                                     context,
@@ -745,6 +890,261 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showPdfSuccessDialog = false }) { Text("Close") }
+            }
+        )
+    }
+
+    if (showPinSetupDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showPinSetupDialog = false 
+                pinSetupText = ""
+                pinConfirmText = ""
+                pinSetupError = ""
+            },
+            title = {
+                Text(
+                    text = if (langCode == "te") "సెక్యూరిటీ పిన్ సెటప్" else "Set Security PIN",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (langCode == "te") "యాప్‌ను సురక్షితంగా ఉంచడానికి దయచేసి 4 అంకెల పిన్‌ను నమోదు చేయండి." else "Enter a 4-digit PIN to secure your application offline.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    
+                    OutlinedTextField(
+                        value = pinSetupText,
+                        onValueChange = { 
+                            if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                                pinSetupText = it
+                                pinSetupError = ""
+                            }
+                        },
+                        label = { Text(if (langCode == "te") "కొత్త పిన్ నమోదు చేయండి" else "Enter 4-Digit PIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("pin_setup_input_1")
+                    )
+
+                    OutlinedTextField(
+                        value = pinConfirmText,
+                        onValueChange = { 
+                            if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                                pinConfirmText = it
+                                pinSetupError = ""
+                            }
+                        },
+                        label = { Text(if (langCode == "te") "పిన్‌ను నిర్ధారించండి" else "Confirm 4-Digit PIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("pin_setup_input_2")
+                    )
+
+                    if (pinSetupError.isNotEmpty()) {
+                        Text(
+                            text = pinSetupError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (pinSetupText.length != 4) {
+                            pinSetupError = if (langCode == "te") "పిన్ కచ్చితంగా 4 అంకెలు ఉండాలి" else "PIN must be exactly 4 digits"
+                        } else if (pinSetupText != pinConfirmText) {
+                            pinSetupError = if (langCode == "te") "పిన్‌లు సరిపోలడం లేదు" else "PINs do not match"
+                        } else {
+                            viewModel.updatePin(pinSetupText)
+                            Toast.makeText(context, if (langCode == "te") "సెక్యూరిటీ పిన్ సేవ్ చేయబడింది!" else "Security PIN updated successfully!", Toast.LENGTH_SHORT).show()
+                            showPinSetupDialog = false
+                            pinSetupText = ""
+                            pinConfirmText = ""
+                            pinSetupError = ""
+                        }
+                    },
+                    modifier = Modifier.testTag("pin_setup_confirm_btn")
+                ) {
+                    Text(if (langCode == "te") "సేవ్ చేయి" else "Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showPinSetupDialog = false 
+                        pinSetupText = ""
+                        pinConfirmText = ""
+                        pinSetupError = ""
+                    }
+                ) {
+                    Text(if (langCode == "te") "క్యాన్సిల్" else "Cancel")
+                }
+            }
+        )
+    }
+
+    if (showPinDeactivateDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showPinDeactivateDialog = false 
+                pinDeactivateText = ""
+                pinDeactivateError = ""
+            },
+            title = {
+                Text(
+                    text = if (langCode == "te") "పిన్ లాక్ నిలిపివేత" else "Deactivate PIN Lock",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (langCode == "te") "పిన్ లాక్‌ను నిలిపివేయడానికి దయచేసి మీ ప్రస్తుత 4 అంకెల పిన్‌ను నమోదు చేయండి." else "Enter your current 4-digit security PIN to disable lock protection.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    
+                    OutlinedTextField(
+                        value = pinDeactivateText,
+                        onValueChange = { 
+                            if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                                pinDeactivateText = it
+                                pinDeactivateError = ""
+                            }
+                        },
+                        label = { Text(if (langCode == "te") "ప్రస్తుత పిన్" else "Current PIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("pin_deactivate_input")
+                    )
+
+                    if (pinDeactivateError.isNotEmpty()) {
+                        Text(
+                            text = pinDeactivateError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (pinDeactivateText == savedPin) {
+                            viewModel.updatePin(null)
+                            Toast.makeText(context, if (langCode == "te") "పిన్ లాక్ నిలిపివేయబడింది!" else "PIN lock deactivated successfully!", Toast.LENGTH_SHORT).show()
+                            showPinDeactivateDialog = false
+                            pinDeactivateText = ""
+                            pinDeactivateError = ""
+                        } else {
+                            pinDeactivateError = if (langCode == "te") "తప్పు పిన్. మళ్లీ ప్రయత్నించండి." else "Incorrect PIN. Try again."
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.testTag("pin_deactivate_confirm_btn")
+                ) {
+                    Text(if (langCode == "te") "నిలిపివేయి" else "Deactivate")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showPinDeactivateDialog = false 
+                        pinDeactivateText = ""
+                        pinDeactivateError = ""
+                    }
+                ) {
+                    Text(if (langCode == "te") "క్యాన్సిల్" else "Cancel")
+                }
+            }
+        )
+    }
+
+    if (showBiometricEnrollDialog) {
+        AlertDialog(
+            onDismissRequest = { showBiometricEnrollDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Fingerprint,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (langCode == "te") "బయోమెట్రిక్ ఎన్‌రోల్‌మెంట్" else "Enroll Biometrics"
+                    )
+                }
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = if (langCode == "te") "సిస్టమ్ ఫింగర్‌ప్రింట్ కోసంగా సెన్సార్‌ను ధృవీకరించడానికి కింద ఉన్న చిహ్నాన్ని తాకండి." else "Tap the fingerprint sensor icon below to authorize and enroll this device's biometrics.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                            .clickable {
+                                viewModel.setFingerprintEnabled(true)
+                                Toast.makeText(context, if (langCode == "te") "బయోమెట్రిక్ విజయవంతంగా లింక్ చేయబడింది!" else "Biometrics linked successfully!", Toast.LENGTH_SHORT).show()
+                                showBiometricEnrollDialog = false
+                            }
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Fingerprint,
+                            contentDescription = "Tap to Scan",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                    
+                    Text(
+                        text = if (langCode == "te") "స్కానింగ్ చేయడానికి తాకండి" else "TAP ICON TO SECURELY SCAN",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showBiometricEnrollDialog = false }
+                ) {
+                    Text(if (langCode == "te") "క్యాన్సిల్" else "Cancel")
+                }
             }
         )
     }

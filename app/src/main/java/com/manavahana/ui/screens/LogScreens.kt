@@ -42,6 +42,7 @@ fun ServiceLogsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     val vehicles by viewModel.vehicles.collectAsState()
     val allServiceLogs by viewModel.allServiceLogs.collectAsState()
     val selectedVehicle by viewModel.selectedVehicle.collectAsState()
@@ -114,7 +115,7 @@ fun ServiceLogsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "సర్వీస్ రికార్డులు (Service History)",
+                    text = if (langCode == "te") "సర్వీస్ రికార్డులు" else if (langCode == "hi") "सेवा इतिहास" else "Service History",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -131,7 +132,7 @@ fun ServiceLogsScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                "వాహనం లేదు (No Vehicle Added)",
+                                text = if (langCode == "te") "వాహన వివరాలు లేవు" else if (langCode == "hi") "कोई वाहन नहीं है" else "No Vehicle Added",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -340,6 +341,7 @@ fun FuelLogsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     val vehicles by viewModel.vehicles.collectAsState()
     val fuelLogs by viewModel.allFuelLogs.collectAsState()
     val selectedVehicle by viewModel.selectedVehicle.collectAsState()
@@ -409,7 +411,7 @@ fun FuelLogsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "ఇంధన లాగ్‌లు (Fuel Logs)",
+                    text = if (langCode == "te") "ఇంధన లాగ్‌లు" else if (langCode == "hi") "ईंधन लॉग" else "Fuel Logs",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -426,7 +428,7 @@ fun FuelLogsScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                "వాహనం లేదు (No Vehicle Added)",
+                                text = if (langCode == "te") "వాహన వివరాలు లేవు" else if (langCode == "hi") "कोई वाहन नहीं है" else "No Vehicle Added",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -468,15 +470,65 @@ fun FuelLogsScreen(
                             ) {
                                 Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("$vehicleName - Filled ${log.litersFilled}L", fontWeight = FontWeight.Bold)
-                                        Text("Station: ${log.fuelStationName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                        Text("Odo: ${log.odometerReading} km", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                        Text(
+                                            text = if (langCode == "te") {
+                                                "$vehicleName - ${log.litersFilled} లీటర్లు నింపారు"
+                                            } else if (langCode == "hi") {
+                                                "$vehicleName - ${log.litersFilled} लीटर भरा"
+                                            } else {
+                                                "$vehicleName - Filled ${log.litersFilled}L"
+                                            },
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = if (langCode == "te") {
+                                                "కేంద్రం: ${log.fuelStationName}"
+                                            } else if (langCode == "hi") {
+                                                "स्टेशन: ${log.fuelStationName}"
+                                            } else {
+                                                "Station: ${log.fuelStationName}"
+                                            },
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                        Text(
+                                            text = if (langCode == "te") {
+                                                "ఓడో: ${log.odometerReading} కి.మీ."
+                                            } else if (langCode == "hi") {
+                                                "ओडो: ${log.odometerReading} किमी"
+                                            } else {
+                                                "Odo: ${log.odometerReading} km"
+                                            },
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        )
                                         if (mileage != null && mileage > 0) {
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text("మైలేజ్ (Mileage): ${String.format("%.2f", mileage)} km/L", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                            Text(
+                                                text = if (langCode == "te") {
+                                                    "మైలేజ్: ${String.format("%.2f", mileage)} కి.మీ./లీ."
+                                                } else if (langCode == "hi") {
+                                                    "माइलेज: ${String.format("%.2f", mileage)} किमी/लीटर"
+                                                } else {
+                                                    "Mileage: ${String.format("%.2f", mileage)} km/L"
+                                                },
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.secondary
+                                            )
                                         }
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text("Date: ${sdf.format(Date(log.fuelDate))}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                        Text(
+                                            text = if (langCode == "te") {
+                                                "తేదీ: ${sdf.format(Date(log.fuelDate))}"
+                                            } else if (langCode == "hi") {
+                                                "तारीख: ${sdf.format(Date(log.fuelDate))}"
+                                            } else {
+                                                "Date: ${sdf.format(Date(log.fuelDate))}"
+                                            },
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                     }
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text("₹${log.totalAmount}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -640,6 +692,7 @@ fun ExpensesScreen(
     viewModel: ManaVahanaViewModel
 ) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     val vehicles by viewModel.vehicles.collectAsState()
     val allExpenses by viewModel.allExpenses.collectAsState()
     val selectedVehicle by viewModel.selectedVehicle.collectAsState()
@@ -706,7 +759,7 @@ fun ExpensesScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "ఖర్చుల నివేదిక (Expenses)",
+                    text = if (langCode == "te") "ఖర్చుల నివేదిక" else if (langCode == "hi") "व्यय रिपोर्ट" else "Expenses Report",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -723,7 +776,7 @@ fun ExpensesScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                "వాహనం లేదు (No Vehicle Added)",
+                                text = if (langCode == "te") "వాహన వివరాలు లేవు" else if (langCode == "hi") "कोई वाहन नहीं है" else "No Vehicle Added",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -897,6 +950,7 @@ fun DocumentVaultScreen(
     viewModel: ManaVahanaViewModel
 ) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     val contentResolver = context.contentResolver
     val vehicles by viewModel.vehicles.collectAsState()
     val allDocuments by viewModel.allDocuments.collectAsState()
@@ -1206,7 +1260,7 @@ fun DocumentVaultScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "డాక్యుమెంట్ వాల్ట్ (Document Vault)",
+                    text = if (langCode == "te") "డాక్యుమెంట్ వాల్ట్" else if (langCode == "hi") "दस्तावेज़ तिजोरी" else "Document Vault",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -1246,7 +1300,7 @@ fun DocumentVaultScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "త్వరలో ముగిసే పరిమితులు (Expiries Near)",
+                                    text = if (langCode == "te") "త్వరలో ముగిసే పరిమితులు" else if (langCode == "hi") "शीघ्र समाप्त होने वाले" else "Near Expiries",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = MaterialTheme.colorScheme.onErrorContainer
@@ -1256,10 +1310,10 @@ fun DocumentVaultScreen(
                             loomingReminders.forEach { reminder ->
                                 val daysLeft = ((reminder.reminderDate - currentTime) / (24 * 60 * 60 * 1000L)).toInt()
                                 val statusText = when {
-                                    daysLeft < 0 -> "🔴 కాలపరిమితి ముగిసింది (Expired ${-daysLeft} days ago)"
-                                    daysLeft == 0 -> "⚠️ ఈరోజే ముగుస్తుంది (Expires today!)"
-                                    daysLeft == 1 -> "⏳ రేపే ముగుస్తుంది (Expires tomorrow!)"
-                                    else -> "⏳ ${daysLeft} రోజుల్లో ముగుస్తుంది (${daysLeft} days left)"
+                                    daysLeft < 0 -> if (langCode == "te") "🔴 కాలపరిమితి ముగిసింది (${-daysLeft} రోజుల క్రితం)" else if (langCode == "hi") "🔴 समय सीमा समाप्त हुआ (${-daysLeft} दिन पहले)" else "🔴 Expired ${-daysLeft} days ago"
+                                    daysLeft == 0 -> if (langCode == "te") "⚠️ ఈరోజే ముగుస్తుంది" else if (langCode == "hi") "⚠️ आज समाप्त हो रहा है" else "⚠️ Expires today!"
+                                    daysLeft == 1 -> if (langCode == "te") "⏳ రేపే ముగుస్తుంది" else if (langCode == "hi") "⏳ कल समाप्त होगा" else "⏳ Expires tomorrow!"
+                                    else -> if (langCode == "te") "⏳ ${daysLeft} రోజుల్లో ముగుస్తుంది" else if (langCode == "hi") "⏳ ${daysLeft} दिनों में समाप्त होगा" else "⏳ ${daysLeft} days left"
                                 }
                                 Row(
                                     modifier = Modifier
@@ -1300,14 +1354,20 @@ fun DocumentVaultScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                "వాహనం లేదు (No Vehicle Added)",
+                                text = if (langCode == "te") "వాహన వివరాలు లేవు" else if (langCode == "hi") "कोई वाहन नहीं है" else "No Vehicle Added",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                "Please add a vehicle first on the Dashboard before tracking logs.",
+                                text = if (langCode == "te") {
+                                    "లాగ్స్ ట్రాక్ చేయడానికి ముందు దయచేసి డాష్‌బోర్డ్‌లో వాహనాన్ని మొదట చేర్చండి."
+                                } else if (langCode == "hi") {
+                                    "लॉग्स को ट्रैक करने से पहले कृपया डैशबोर्ड पर पहले वाहन जोड़ें।"
+                                } else {
+                                    "Please add a vehicle first on the Dashboard before tracking logs."
+                                },
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center

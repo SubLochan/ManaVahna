@@ -207,16 +207,19 @@ class AppUpdateHelper private constructor(private val context: Context) {
         launcher: ActivityResultLauncher<IntentSenderRequest>,
         isFlexible: Boolean = true
     ) {
+        if (appUpdateManager == null) {
+            openPlayStore(activity)
+            return
+        }
+        val updateType = if (isFlexible) AppUpdateType.FLEXIBLE else AppUpdateType.IMMEDIATE
         try {
-            val updateType = if (isFlexible) AppUpdateType.FLEXIBLE else AppUpdateType.IMMEDIATE
-            val options = AppUpdateOptions.newBuilder(updateType).build()
-            appUpdateManager?.startUpdateFlowForResult(
+            appUpdateManager.startUpdateFlowForResult(
                 appUpdateInfo,
                 launcher,
-                options
+                AppUpdateOptions.newBuilder(updateType).build()
             )
         } catch (e: Exception) {
-            Log.e("AppUpdateHelper", "Error starting real update flow: ${e.message}")
+            Log.e("AppUpdateHelper", "Failed to start in-app update flow: ${e.message}")
             openPlayStore(activity)
         }
     }
