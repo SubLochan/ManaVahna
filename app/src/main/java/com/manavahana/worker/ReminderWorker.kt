@@ -1,4 +1,4 @@
-package com.example.worker
+package com.manavahana.worker
 
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -7,11 +7,11 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.MainActivity
-import com.example.ManaVahanaApplication
-import com.example.data.model.Vehicle
-import com.example.data.model.Document
-import com.example.data.model.Reminder
+import com.manavahana.MainActivity
+import com.manavahana.ManaVahanaApplication
+import com.manavahana.data.model.Vehicle
+import com.manavahana.data.model.Document
+import com.manavahana.data.model.Reminder
 import kotlinx.coroutines.flow.firstOrNull
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -124,10 +124,90 @@ class ReminderWorker(
             }
         }
 
+        // 4. Check for App Updates in Background
+        try {
+            val packageName = applicationContext.packageName
+            val currentVersionName = applicationContext.packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
+            val latestVersionName = com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName) ?: "1.5"
+            if (isNewerVersion(currentVersionName, latestVersionName)) {
+                sendUpdateNotification(latestVersionName)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         return Result.success()
     }
 
-    private fun sendNotification(id: Int, title: String, message: String) {
+    private fun isNewerVersion(current: String, latest: String): Boolean {
+        try {
+            val currParts = current.split(".").mapNotNull { it.toIntOrNull() }
+            val lateParts = latest.split(".").mapNotNull { it.toIntOrNull() }
+            val length = maxOf(currParts.size, lateParts.size)
+            for (i in 0 until length) {
+                val currVal = currParts.getOrNull(i) ?: 0
+                val lateVal = lateParts.getOrNull(i) ?: 0
+                if (lateVal > currVal) return true
+                if (currVal > lateVal) return false
+            }
+        } catch (e: Exception) {
+            return latest != current
+        }
+        return false
+    }
+
+    private suspend fun sendUpdateNotification(version: String) {
+        val app = applicationContext as? ManaVahanaApplication
+        val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()
+        val langCode = if (rawLang.isNullOrEmpty()) "en" else rawLang
+
+        val title = com.manavahana.ui.Localizer.get("update_available_title", langCode)
+        val template = com.manavahana.ui.Localizer.get("update_available_desc", langCode)
+        val desc = template.replace("%1\$s", version)
+
+        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            7895,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "app_update_channel"
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "ManaVahana App Updates",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for available software and system updates"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(applicationContext, channelId)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle(title)
+            .setContentText(desc)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(desc))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(7895, notification)
+    }
+
+    private suspend fun sendNotification(id: Int, title: String, message: String) {
+        val app = applicationContext as? ManaVahanaApplication
+        val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()
+        val langCode = if (rawLang.isNullOrEmpty()) "en" else rawLang
+        val translatedTitle = com.manavahana.ui.Localizer.translate(title, langCode)
+        val translatedMessage = com.manavahana.ui.Localizer.translate(message, langCode)
+
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -140,9 +220,9 @@ class ReminderWorker(
 
         val notification = NotificationCompat.Builder(applicationContext, "manavahana_reminders")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setContentTitle(translatedTitle)
+            .setContentText(translatedMessage)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(translatedMessage))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

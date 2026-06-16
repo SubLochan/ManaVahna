@@ -8,26 +8,26 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
-    compileSdk = 36
-    ndkVersion = "25.1.8937393"
+  namespace = "com.manavahana"
+  compileSdk = 36
+  ndkVersion = "25.1.8937393"
 
   defaultConfig {
     applicationId = "com.Lochan.ManaVahana"
     minSdk = 24
-      targetSdk = 36
-      versionCode = 3
-    versionName = "1.1"
+    targetSdk = 36
+    versionCode = 1
+    versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/ManaVahna_key.jks"
       storeFile = file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+      keyAlias = "ManaVahnaKey"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     if (file("${rootDir}/debug.keystore").exists()) {
@@ -52,13 +52,6 @@ android {
       if (customDebugConfig != null) {
         signingConfig = customDebugConfig
       }
-    }
-  }
-
-  applicationVariants.all {
-    outputs.all {
-      val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-      output.outputFileName = "ManaVahana.apk"
     }
   }
 
@@ -122,6 +115,8 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
+  implementation(libs.play.app.update)
+  implementation(libs.play.app.update.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
