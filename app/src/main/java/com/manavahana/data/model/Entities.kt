@@ -49,7 +49,7 @@ data class Expense(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val vehicleId: Int,
     val expenseDate: Long,
-    val category: String, // Fuel, Repairs, Insurance, Washing, Accessories, Parking, Toll, Miscellaneous
+    val category: String, // Fuel, Service, Insurance, Washing, Accessories, Parking, Toll, Miscellaneous
     val amount: Double,
     val notes: String
 )

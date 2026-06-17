@@ -1,0 +1,158 @@
+{
+  "appName": "ManaVahana",
+  "version": 1,
+  "timestamp": 1781627279000,
+  "vehicles": [
+    {
+      "id": 1,
+      "vehicleName": "Interceptor 650",
+      "vehicleNumber": "MH-12-PQ-9999",
+      "brand": "Royal Enfield",
+      "model": "Baker Express",
+      "vehicleType": "Bike",
+      "fuelType": "Petrol",
+      "purchaseDate": 1672531200000,
+      "insuranceExpiry": 1799280000000,
+      "pollutionExpiry": 1783516800000,
+      "vehicleImage": ""
+    },
+    {
+      "id": 2,
+      "vehicleName": "Fortuner Legender",
+      "vehicleNumber": "KA-51-AB-1234",
+      "brand": "Toyota",
+      "model": "Legender 4x4",
+      "vehicleType": "Car",
+      "fuelType": "Diesel",
+      "purchaseDate": 1685577600000,
+      "insuranceExpiry": 1814985600000,
+      "pollutionExpiry": 1788825600000,
+      "vehicleImage": ""
+    }
+  ],
+  "serviceLogs": [
+    {
+      "id": 1,
+      "vehicleId": 1,
+      "serviceDate": 1675123200000,
+      "odometerReading": 500.0,
+      "serviceType": "First Free Service",
+      "serviceCenter": "Royal Enfield Station, Pune",
+      "cost": 150.0,
+      "notes": "Engine oil change and chain lubrication.",
+      "nextServiceDate": 1690848000000,
+      "billPhoto": ""
+    },
+    {
+      "id": 2,
+      "vehicleId": 2,
+      "serviceDate": 1698710400000,
+      "odometerReading": 10000.0,
+      "serviceType": "10k Periodic Service",
+      "serviceCenter": "Toyota Ravindu Motors, Bengaluru",
+      "cost": 4500.0,
+      "notes": "Wheel alignment, rotation, AC filter check, and general cleaning.",
+      "nextServiceDate": 1714521600000,
+      "billPhoto": ""
+    }
+  ],
+  "fuelLogs": [
+    {
+      "id": 1,
+      "vehicleId": 1,
+      "fuelDate": 1672617600000,
+      "litersFilled": 12.5,
+      "pricePerLiter": 104.2,
+      "totalAmount": 1302.5,
+      "odometerReading": 15.0,
+      "fuelStationName": "Shell Station, Pune"
+    },
+    {
+      "id": 2,
+      "vehicleId": 1,
+      "fuelDate": 1672963200000,
+      "litersFilled": 11.8,
+      "pricePerLiter": 104.5,
+      "totalAmount": 1233.1,
+      "odometerReading": 315.0,
+      "fuelStationName": "HP Petrol Pump, Pune"
+    },
+    {
+      "id": 3,
+      "vehicleId": 2,
+      "fuelDate": 1685664000000,
+      "litersFilled": 60.0,
+      "pricePerLiter": 92.4,
+      "totalAmount": 5544.0,
+      "odometerReading": 120.0,
+      "fuelStationName": "Indian Oil, Bengaluru"
+    }
+  ],
+  "expenses": [
+    {
+      "id": 1,
+      "vehicleId": 2,
+      "expenseDate": 1685750400000,
+      "category": "Toll",
+      "amount": 180.0,
+      "notes": "Nice expressway toll collection."
+    },
+    {
+      "id": 2,
+      "vehicleId": 1,
+      "expenseDate": 1673913600000,
+      "category": "Accessory",
+      "amount": 3500.0,
+      "notes": "Crash guards and engine protection shield."
+    }
+  ],
+  "documents": [
+    {
+      "id": 1,
+      "vehicleId": 1,
+      "docType": "Registration",
+      "title": "RC Interceptor 650",
+      "expiryDate": 2145916800000,
+      "documentPath": "",
+      "isEncrypted": false
+    },
+    {
+      "id": 2,
+      "vehicleId": 2,
+      "docType": "Insurance",
+      "title": "Comprehensive Insurance Legender",
+      "expiryDate": 1814985600000,
+      "documentPath": "",
+      "isEncrypted": false
+    }
+  ],
+  "reminders": [
+    {
+      "id": 1,
+      "vehicleId": 1,
+      "title": "Periodic Service Overdue",
+      "description": "Your bike is overdue for periodic engine oil filter replacement.",
+      "reminderDate": 1781299200000,
+      "isCompleted": false,
+      "category": "Service"
+    },
+    {
+      "id": 2,
+      "vehicleId": 2,
+      "title": "Insurance Expiry Renewal",
+      "description": "Immediate renewal recommended to prevent standard coverage lapse.",
+      "reminderDate": 1814726400000,
+      "isCompleted": false,
+      "category": "Insurance"
+    },
+    {
+      "id": 3,
+      "vehicleId": 1,
+      "title": "PUC Pollution Check",
+      "description": "Your PUC certificate is nearing its safety emission standard threshold.",
+      "reminderDate": 1783084800000,
+      "isCompleted": false,
+      "category": "Pollution"
+    }
+  ]
+}

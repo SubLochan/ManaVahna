@@ -166,7 +166,7 @@ fun AddVehicleScreen(
                 ) {
                     if (vehicleImage != null) {
                         AsyncImage(
-                            model = PathUtils.getResolutionPath(context, vehicleImage),
+                            model = PathUtils.getResolutionFile(context, vehicleImage) ?: vehicleImage,
                             contentDescription = "Vehicle Photo",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -180,7 +180,7 @@ fun AddVehicleScreen(
                                 imageVector = Icons.Default.DirectionsCar,
                                 contentDescription = "App Icon Placeholder",
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -200,7 +200,7 @@ fun AddVehicleScreen(
                         )
                     }
                 ) {
-                    Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(getLocalizedText("Select vehicle photo", langCode), fontSize = 13.sp)
                 }
@@ -792,7 +792,7 @@ fun VehicleDetailsScreen(
                                     Text(getLocalizedText("Category:", langCode) + " " + getLocalizedText(expenseCategory, langCode))
                                 }
                                 DropdownMenu(expanded = expandedCat, onDismissRequest = { expandedCat = false }) {
-                                    listOf("Fuel", "Repairs", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous").forEach { cat ->
+                                    listOf("Fuel", "Service", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous").forEach { cat ->
                                         DropdownMenuItem(
                                             text = { Text(getLocalizedText(cat, langCode)) },
                                             onClick = {
@@ -937,9 +937,9 @@ fun VehicleDetailsScreen(
                                     isEncrypted = true
                                 )
                                 if (editingDocument != null) {
-                                    viewModel.updateDocument(newDoc)
+                                    viewModel.updateDocument(context, newDoc)
                                 } else {
-                                    viewModel.addDocument(newDoc)
+                                    viewModel.addDocument(context, newDoc)
                                 }
                                 showAddDocumentDialog = false
                                 resetDocumentFields()
@@ -1124,27 +1124,20 @@ fun VehicleDetailsScreen(
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (!activeVehicle.vehicleImage.isNullOrBlank()) {
+                                    if (!activeVehicle.vehicleImage.isNullOrBlank()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(180.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            contentAlignment = Alignment.Center
+                                        ) {
                                             AsyncImage(
-                                                model = PathUtils.getResolutionPath(context, activeVehicle.vehicleImage),
+                                                model = PathUtils.getResolutionFile(context, activeVehicle.vehicleImage) ?: activeVehicle.vehicleImage,
                                                 contentDescription = "Vehicle Portrait",
                                                 modifier = Modifier.fillMaxSize(),
                                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = getVehicleIcon(activeVehicle.vehicleType),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                                modifier = Modifier.size(80.dp)
                                             )
                                         }
                                     }
@@ -1286,7 +1279,7 @@ fun VehicleDetailsScreen(
                                 ) {
                                     if (editImage != null) {
                                         AsyncImage(
-                                            model = PathUtils.getResolutionPath(context, editImage),
+                                            model = PathUtils.getResolutionFile(context, editImage) ?: editImage,
                                             contentDescription = "Edit Vehicle",
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -1555,7 +1548,7 @@ fun VehicleDetailsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            documentToDelete?.let { viewModel.deleteDocument(it) }
+                            documentToDelete?.let { viewModel.deleteDocument(context, it) }
                             documentToDelete = null
                         }
                     ) {

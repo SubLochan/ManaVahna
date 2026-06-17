@@ -18,8 +18,8 @@ class UserPreferencesRepository(private val context: Context) {
         private val IS_FINGERPRINT_ENABLED = booleanPreferencesKey("is_fingerprint_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
-        private val JWT_TOKEN = stringPreferencesKey("jwt_token")
         private val OVERRIDDEN_APP_VERSION = stringPreferencesKey("overridden_app_version")
+        private val BIOMETRIC_PROMPT_SHOWN = booleanPreferencesKey("biometric_prompt_shown")
     }
 
     val overriddenAppVersion: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -29,22 +29,6 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun saveOverriddenAppVersion(version: String) {
         context.dataStore.edit { preferences ->
             preferences[OVERRIDDEN_APP_VERSION] = version
-        }
-    }
-
-    val jwtToken: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[JWT_TOKEN]
-    }
-
-    suspend fun saveJwtToken(token: String) {
-        context.dataStore.edit { preferences ->
-            preferences[JWT_TOKEN] = token
-        }
-    }
-
-    suspend fun clearJwtToken() {
-        context.dataStore.edit { preferences ->
-            preferences.remove(JWT_TOKEN)
         }
     }
 
@@ -72,6 +56,10 @@ class UserPreferencesRepository(private val context: Context) {
         preferences[IS_FINGERPRINT_ENABLED] ?: false
     }
 
+    val isBiometricPromptShown: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[BIOMETRIC_PROMPT_SHOWN] ?: false
+    }
+
     suspend fun setOnboardingCompleted(completed: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IS_ONBOARDING_COMPLETED] = completed
@@ -95,6 +83,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setFingerprintEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IS_FINGERPRINT_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setBiometricPromptShown(shown: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[BIOMETRIC_PROMPT_SHOWN] = shown
         }
     }
 

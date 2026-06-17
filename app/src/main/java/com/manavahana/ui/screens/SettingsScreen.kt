@@ -58,8 +58,6 @@ fun SettingsScreen(
     val overriddenAppVersion by viewModel.overriddenAppVersion.collectAsState()
     val langCode = selectedLanguage ?: "en"
 
-    val currentUserState by viewModel.currentUserState.collectAsState()
-
     // Database states gathered for exports
     val vehicles by viewModel.vehicles.collectAsState()
     val expenses by viewModel.allExpenses.collectAsState()
@@ -142,75 +140,6 @@ fun SettingsScreen(
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
-        }
-
-        // Logged-in User Profile Card with Logout functionality
-        item {
-            currentUserState?.let { user ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().testTag("user_profile_card"),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                modifier = Modifier.size(48.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = if (user.name.isNotEmpty()) user.name.take(1).uppercase() else "?",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    text = user.name,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    text = user.email,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                )
-                                Text(
-                                    text = "Secure Session Active",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 2.dp)
-                                )
-                            }
-                        }
-                        IconButton(
-                            onClick = {
-                                viewModel.logout()
-                                Toast.makeText(context, "Logged out successfully!", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.testTag("settings_logout_btn")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Logout,
-                                contentDescription = "Log Out",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         // Security Configuration Card
@@ -317,6 +246,8 @@ fun SettingsScreen(
                             modifier = Modifier.testTag("biometric_switch")
                         )
                     }
+
+
                 }
             }
         }
@@ -450,9 +381,7 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 try {
-                                    val userName = currentUserState?.name ?: "User"
-                                    val cleanUserName = userName.replace("\\s+".toRegex(), "_")
-                                    val backupFileName = "${cleanUserName}_ManaVahanBackup.json"
+                                    val backupFileName = "ManaVahana_Backup.json"
                                     exportJsonLauncher.launch(backupFileName)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
@@ -491,9 +420,7 @@ fun SettingsScreen(
                                 val jsonString = viewModel.exportBackupJsonString(context)
                                 val backupDir = java.io.File(context.cacheDir, "backups")
                                 if (!backupDir.exists()) backupDir.mkdirs()
-                                val userName = currentUserState?.name ?: "User"
-                                val cleanUserName = userName.replace("\\s+".toRegex(), "_")
-                                val backupFileName = "${cleanUserName}_ManaVahanBackup.json"
+                                val backupFileName = "ManaVahana_Backup.json"
                                 val backupFile = java.io.File(backupDir, backupFileName)
                                 backupFile.writeText(jsonString, Charsets.UTF_8)
                                 val backupUri = androidx.core.content.FileProvider.getUriForFile(

@@ -38,6 +38,30 @@ class ReminderWorker(
             }
         }
 
+        // Check if this was a directed, scheduled document expiry alarm
+        val docId = inputData.getInt("document_id", -1)
+        if (docId != -1) {
+            val alertType = inputData.getString("alert_type") ?: "exact_day"
+            val documents = repository.allDocuments.firstOrNull() ?: emptyList()
+            val document = documents.find { it.id == docId }
+            if (document != null && document.expiryDate != null) {
+                val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                val formattedDate = sdf.format(Date(document.expiryDate))
+                val title = when (alertType) {
+                    "7_days_before" -> "${document.docType}: ${document.title} త్వరలో ముగియనుంది (Expires in 7 Days)"
+                    "1_day_before" -> "${document.docType}: ${document.title} రేపటితో ముగియనుంది (Expires Tomorrow)"
+                    else -> "${document.docType}: ${document.title} కాలపరిమితి ఈరోజే ముగుస్తుంది (Expires Today)"
+                }
+                val message = when (alertType) {
+                    "7_days_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు 7 రోజుల్లో (${formattedDate}) ముగుస్తుంది. దయచేసి అప్‌డేట్ చూసుకోండి!"
+                    "1_day_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు రేపటితో (${formattedDate}) ముగుస్తుంది. దయచేసి సిద్ధం చేసుకోండి!"
+                    else -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు ఈరోజే (${formattedDate}) ముగిసింది. దయచేసి వెంటనే అప్‌డేట్ చేయండి!"
+                }
+                sendNotification(document.id + 40000, title, message)
+            }
+            return Result.success()
+        }
+
         val currentTime = System.currentTimeMillis()
         val notifyThreshold = 7 * 24 * 60 * 60 * 1000L // 7 days ahead for proactive warning
         val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())

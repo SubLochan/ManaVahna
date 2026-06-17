@@ -106,22 +106,6 @@ class MainActivity : ComponentActivity() {
 
                     val isPinVerified by viewModel.isPinVerified.collectAsState()
                     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
-                    val currentUser by viewModel.currentUserState.collectAsState()
-
-                    // Secure Session Guard: Automatically redirect to AuthScreen when user is logged out (JWT is null)
-                    LaunchedEffect(currentUser, currentRoute) {
-                        if (currentUser == null &&
-                            currentRoute != null &&
-                            currentRoute != "splash" &&
-                            currentRoute != "language_selection" &&
-                            currentRoute != "onboarding" &&
-                            currentRoute != "auth"
-                        ) {
-                            navController.navigate("auth") {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }
-                    }
 
                 // List of destinations that require the Bottom Navigation Bar
                 val bottomNavDestinations = listOf(
@@ -134,7 +118,7 @@ class MainActivity : ComponentActivity() {
                 )
 
                 var showQuickActions by remember { mutableStateOf(false) }
-                val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled) && currentUser != null
+                val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled)
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -161,7 +145,7 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     val leftItems = listOf(
                                         BottomNavItem(com.manavahana.ui.Localizer.get("nav_dashboard", langCode), "dashboard", Icons.Default.Dashboard),
-                                        BottomNavItem(com.manavahana.ui.Localizer.get("nav_expenses", langCode), "expenses", Icons.Default.Payments)
+                                        BottomNavItem(com.manavahana.ui.Localizer.get("nav_services", langCode), "service_logs", Icons.Default.Build)
                                     )
                                     val rightItems = listOf(
                                         BottomNavItem(com.manavahana.ui.Localizer.get("nav_vault", langCode), "document_vault", Icons.Default.FolderZip),
@@ -294,30 +278,29 @@ class MainActivity : ComponentActivity() {
                                     )
 
                                     val actionsList = listOf(
-                                        Triple(
-                                            if (langCode == "te") "వాహనం జోడించు" else if (langCode == "hi") "वाहन शामिल करें" else "Add Vehicle",
-                                            "add_vehicle",
-                                            Icons.Default.DirectionsCar
+                                        QuickActionOption(
+                                            label = if (langCode == "te") "వాహనం జోడించు" else if (langCode == "hi") "वाहन शामिल करें" else "Add Vehicle",
+                                            description = if (langCode == "te") "మైలేజీ మరియు సర్వీస్ నిర్వహణ కోసం కొత్త వాహనం జోడించండి" else if (langCode == "hi") "माइलेज और सर्विस प्रबंधन के लिए नया वाहन जोड़ें" else "Add a new vehicle to track services and mileage",
+                                            route = "add_vehicle",
+                                            icon = Icons.Default.DirectionsCar
                                         ),
-                                        Triple(
-                                            if (langCode == "te") "ఖర్చు జోడించు" else if (langCode == "hi") "खर्च शामिल करें" else "Add Expense",
-                                            "expenses",
-                                            Icons.Default.Payments
+                                        QuickActionOption(
+                                            label = if (langCode == "te") "సర్వీస్ రికార్డ్ జోడించు" else if (langCode == "hi") "सेवा रिकॉर्ड शामिल करें" else "Add Service Record",
+                                            description = if (langCode == "te") "రిపేర్లు, ఇంజిన్ ఆయిల్ మార్పు లేదా మెయింటెనెన్స్ రికార్డ్‌లను నమోదు చేయండి" else if (langCode == "hi") "मरम्मत, इंजन तेल परिवर्तन या रखरखाव रिकॉर्ड दर्ज करें" else "Log repairs, engine oil change, or periodic maintenance",
+                                            route = "service_logs",
+                                            icon = Icons.Default.Build
                                         ),
-                                        Triple(
-                                            if (langCode == "te") "సర్వీస్ రికార్డ్ జోడించు" else if (langCode == "hi") "सेवा रिकॉर्ड शामिल करें" else "Add Service Record",
-                                            "service_logs",
-                                            Icons.Default.Build
+                                        QuickActionOption(
+                                            label = if (langCode == "te") "ఇంధనం పూరించండి" else if (langCode == "hi") "ईंधन भरें" else "Fill Fuel",
+                                            description = if (langCode == "te") "మైలేజ్ విశ్లేషించడానికి ఇంధన పరిమాణం మరియు ధర రికార్డ్ చేయండి" else if (langCode == "hi") "माइलेज का विश्लेषण करने के लिए ईंधन की मात्रा और लागत दर्ज करें" else "Log fuel details, cost, and odometer reading to track mileage",
+                                            route = "fuel_logs",
+                                            icon = Icons.Default.LocalGasStation
                                         ),
-                                        Triple(
-                                            if (langCode == "te") "ఇంధనం పూరించండి" else if (langCode == "hi") "ईंधन भरें" else "Fill Fuel",
-                                            "fuel_logs",
-                                            Icons.Default.LocalGasStation
-                                        ),
-                                        Triple(
-                                            if (langCode == "te") "డాక్యుమెంట్ వాల్ట్" else if (langCode == "hi") "दस्तावेज़ तिजोरी" else "Document Vault",
-                                            "document_vault",
-                                            Icons.Default.FolderZip
+                                        QuickActionOption(
+                                            label = if (langCode == "te") "డాక్యుమెంట్ వాల్ట్" else if (langCode == "hi") "दस्तावेज़ तिजोरी" else "Document Vault",
+                                            description = if (langCode == "te") "RC, ఇన్సూరెన్స్ యొక్క డిజిటల్ కాపీలను భద్రపరచండి" else if (langCode == "hi") "आरसी, बीमा की डिजिटल प्रतियां सुरक्षित रखें" else "Securely store document copies & expiry alerts",
+                                            route = "document_vault",
+                                            icon = Icons.Default.FolderZip
                                         )
                                     )
 
@@ -325,7 +308,7 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        actionsList.forEach { (label, route, icon) ->
+                                        actionsList.forEach { action ->
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -333,7 +316,7 @@ class MainActivity : ComponentActivity() {
                                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                                     .clickable {
                                                         showQuickActions = false
-                                                        navController.navigate(route)
+                                                        navController.navigate(action.route)
                                                     }
                                                     .padding(14.dp),
                                                 verticalAlignment = Alignment.CenterVertically,
@@ -347,19 +330,29 @@ class MainActivity : ComponentActivity() {
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     Icon(
-                                                        imageVector = icon,
-                                                        contentDescription = label,
+                                                        imageVector = action.icon,
+                                                        contentDescription = action.label,
                                                         tint = MaterialTheme.colorScheme.primary,
                                                         modifier = Modifier.size(18.dp)
                                                     )
                                                 }
 
-                                                androidx.compose.material3.Text(
-                                                    text = label,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 13.sp,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
+                                                Column(
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    androidx.compose.material3.Text(
+                                                        text = action.label,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 13.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    androidx.compose.material3.Text(
+                                                        text = action.description,
+                                                        fontSize = 10.5.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -436,19 +429,8 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(
                                 viewModel = viewModel,
                                 onComplete = {
-                                    navController.navigate("auth") {
-                                        popUpTo("onboarding") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-
-                        composable("auth") {
-                            AuthScreen(
-                                viewModel = viewModel,
-                                onAuthSuccess = {
                                     navController.navigate("dashboard") {
-                                        popUpTo("auth") { inclusive = true }
+                                        popUpTo("onboarding") { inclusive = true }
                                     }
                                 }
                             )
@@ -537,6 +519,13 @@ class MainActivity : ComponentActivity() {
 
 data class BottomNavItem(
     val label: String,
+    val route: String,
+    val icon: ImageVector
+)
+
+data class QuickActionOption(
+    val label: String,
+    val description: String,
     val route: String,
     val icon: ImageVector
 )

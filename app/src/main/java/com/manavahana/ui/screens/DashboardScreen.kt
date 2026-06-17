@@ -115,6 +115,10 @@ fun DashboardScreen(
         }.sumOf { it.amount }
     }
 
+    val isPinLockEnabled by viewModel.isPinLockEnabled.collectAsState()
+    val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
+    val isBiometricPromptShown by viewModel.isBiometricPromptShown.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -160,8 +164,7 @@ fun DashboardScreen(
                         }
 
                         Column {
-                            val userName = viewModel.currentUserState.value?.name ?: "User"
-                            val greeting = if (langCode == "te") "నమస్కారం, $userName!" else if (langCode == "hi") "नमस्ते, $userName!" else "Hello, $userName!"
+                            val greeting = if (langCode == "te") "నమస్కారం!" else if (langCode == "hi") "नमस्ते!" else "Hello, Rider!"
                             Text(
                                 text = greeting,
                                 fontSize = 16.sp,
@@ -353,6 +356,114 @@ fun DashboardScreen(
                 }
             }
 
+            // Biometric / Fingerprint shortcut suggestion prompt
+            if (isPinLockEnabled && !isFingerprintEnabled && !isBiometricPromptShown) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("biometric_suggestion_prompt_card"),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Fingerprint,
+                                    contentDescription = "Fingerprint shortcut suggestion",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Text(
+                                    text = if (langCode == "te") "బయోమెట్రిక్ సత్వరమార్గం యాక్టివేట్ చేయండి" else "Enable Biometric Shortcuts",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = if (langCode == "te") {
+                                    "సెక్యూరిటీ పిన్‌ను టైప్ చేసే బదులు మీ వేలిముద్రతో సులభంగా మరియు వేగంగా వాహన యాప్‌ ప్రవేశించండి!"
+                                } else {
+                                    "Use your device's fingerprint scanning to authorize access instantly, bypassing PIN prompt screens."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                                lineHeight = 20.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = { 
+                                        viewModel.setBiometricPromptShown(true) 
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    ),
+                                    modifier = Modifier
+                                        .height(48.dp)
+                                        .testTag("biometric_skip_prompt_button")
+                                ) {
+                                    Text(
+                                        text = if (langCode == "te") "దాటవేయి" else "Skip", 
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Button(
+                                    onClick = {
+                                        viewModel.setFingerprintEnabled(true)
+                                        viewModel.setBiometricPromptShown(true)
+                                        Toast.makeText(context, if (langCode == "te") "బయోమెట్రిక్ విజయవంతంగా లింక్ చేయబడింది!" else "Biometrics linked successfully!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .height(48.dp)
+                                        .testTag("biometric_enable_prompt_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check, 
+                                        contentDescription = null, 
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (langCode == "te") "యాక్టివేట్ చేయి" else "Enable Shortcut", 
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // PRIMARY VEHICLE GRAPHIC HERO DISPLAY (Vivid Orange Card)
             item {
                 val currentVeh = selectedVehicle
@@ -449,28 +560,20 @@ fun DashboardScreen(
                                             )
                                         }
 
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Box(
-                                            modifier = Modifier
-                                                .size(width = 250.dp, height = 150.dp)
-                                                .clip(RoundedCornerShape(14.dp))
-                                                .background(Color.White.copy(alpha = 0.15f))
-                                                .border(1.dp, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (!pageVeh.vehicleImage.isNullOrBlank()) {
+                                        if (!pageVeh.vehicleImage.isNullOrBlank()) {
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 150.dp, height = 150.dp) // Noticeably INCREASED image size!
+                                                    .clip(RoundedCornerShape(14.dp))
+                                                    .background(Color.White.copy(alpha = 0.25f))
+                                                    .border(1.dp, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                                            ) {
                                                 AsyncImage(
-                                                    model = PathUtils.getResolutionPath(context, pageVeh.vehicleImage),
+                                                    model = PathUtils.getResolutionFile(context, pageVeh.vehicleImage) ?: pageVeh.vehicleImage,
                                                     contentDescription = "Vehicle Image",
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = getVehicleIcon(pageVeh.vehicleType),
-                                                    contentDescription = null,
-                                                    tint = Color.Black.copy(alpha = 0.4f),
-                                                    modifier = Modifier.size(48.dp)
                                                 )
                                             }
                                         }
@@ -784,7 +887,7 @@ fun DashboardScreen(
                                         ) {
                                             if (!veh.vehicleImage.isNullOrBlank()) {
                                                 AsyncImage(
-                                                    model = PathUtils.getResolutionPath(context, veh.vehicleImage),
+                                                    model = PathUtils.getResolutionFile(context, veh.vehicleImage) ?: veh.vehicleImage,
                                                     contentDescription = "Vehicle Grid Image",
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -852,37 +955,50 @@ fun DashboardScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Action 1: Add Expense
+                        // Action 1: Fill Fuel
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFF1B1B1D))
-                                .clickable { onNavigateToAddExpense() }
-                                .padding(14.dp),
+                                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                                .clickable { onNavigateToAddFuel() }
+                                .padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(40.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFFFA000).copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Payments,
-                                    contentDescription = "Add Expense",
+                                    imageVector = Icons.Default.LocalGasStation,
+                                    contentDescription = "Fill Fuel",
                                     tint = Color(0xFFFFA000),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Text(
-                                text = "Add Expense",
+                                text = if (langCode == "te") "ఇంధనం పూరించండి" else "Fill Fuel",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (langCode == "te") "మైలేజ్ మరియు ఇంధన ఖర్చులు" else "Log fuel logs & mileage efficiency",
+                                fontSize = 8.5.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
 
@@ -892,14 +1008,15 @@ fun DashboardScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFF1B1B1D))
+                                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
                                 .clickable { onNavigateToAddService() }
-                                .padding(14.dp),
+                                .padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(40.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFFFA000).copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
@@ -908,15 +1025,27 @@ fun DashboardScreen(
                                     imageVector = Icons.Default.Build,
                                     contentDescription = "Add Service Log",
                                     tint = Color(0xFFFFA000),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Text(
-                                text = "Add Service Log",
+                                text = if (langCode == "te") "సర్వీస్ రికార్డ్" else "Add Service",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (langCode == "te") "ఇంజిన్ ఆయిల్ మరియు రిపేర్లు" else "Track oil, filters & parts logs",
+                                fontSize = 8.5.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
 
@@ -926,14 +1055,15 @@ fun DashboardScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFF1B1B1D))
+                                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
                                 .clickable { onNavigateToVault() }
-                                .padding(14.dp),
+                                .padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(40.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFFFA000).copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
@@ -942,15 +1072,27 @@ fun DashboardScreen(
                                     imageVector = Icons.Default.Folder,
                                     contentDescription = "Vault Docs",
                                     tint = Color(0xFFFFA000),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Text(
-                                text = "Boost Documents",
+                                text = if (langCode == "te") "డాక్యుమెంట్ వాల్ట్" else "Vault Docs",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (langCode == "te") "RC, ఇన్సూరెన్స్ సురక్షితం" else "Securely store RC, PUC cards",
+                                fontSize = 8.5.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -1397,7 +1539,7 @@ fun getVehicleIcon(type: String): androidx.compose.ui.graphics.vector.ImageVecto
     }
 }
 
-// Custom built Pie Chart
+// Custom built interactive Pie/Donut Chart with premium Material 3 styling
 @Composable
 fun ExpensePieChartCard(expenses: List<Expense>) {
     val categoryMap = remember(expenses) {
@@ -1405,90 +1547,338 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
     }
 
     val totalAmount = categoryMap.values.sum()
+    if (totalAmount <= 0) return
 
-    // Assign lovely custom colours to categories
     val colors = listOf(
-        Color(0xFFE53935), // Red - Repairs
-        Color(0xFF1E88E5), // Blue - Fuel
-        Color(0xFFFFB300), // Amber - Insurance
-        Color(0xFF43A047), // Green - Washing
-        Color(0xFF8E24AA), // Purple - Accessories
-        Color(0xFFD81B60), // Pink - Parking
-        Color(0xFF00ACC1), // Cyan - Toll
-        Color(0xFFF4511E)  // Orange - Miscellaneous
+        Color(0xFFEF5350), // Red - Service
+        Color(0xFF42A5F5), // Blue - Fuel
+        Color(0xFFFFCA28), // Amber - Insurance
+        Color(0xFF66BB6A), // Green - Washing
+        Color(0xFFAB47BC), // Purple - Accessories
+        Color(0xFFEC407A), // Pink - Parking
+        Color(0xFF26C6DA), // Cyan - Toll
+        Color(0xFFFF7043)  // Orange - Miscellaneous
     )
 
-    val expenseCategories = listOf("Repairs", "Fuel", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous")
+    val expenseCategories = listOf("Service", "Fuel", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous")
+
+    // Retrieve active language code or fallback to English
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val intentLang = activity?.intent?.getStringExtra("lang") ?: "en"
+
+    // Component tab switcher
+    var selectedTab by remember { mutableIntStateOf(0) } // 0 for Donut Visualizer, 1 for Dynamic Ledger Breakdowns
+    
+    // Interactive segment highlight (auto-select category with maximum expense initially)
+    var selectedCategory by remember(categoryMap) { 
+        mutableStateOf(categoryMap.keys.maxByOrNull { categoryMap[it] ?: 0.0 } ?: "Fuel") 
+    }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("expense_analytics_card"),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0C0C0E)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Draw Pie Segment
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .weight(1.2f),
-                contentAlignment = Alignment.Center
+            // Modern Header & High-level Metrics Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    var startAngle = -90f
-                    categoryMap.forEach { (cat, amt) ->
-                        val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
-                        val sweepAngle = ((amt / totalAmount) * 360f).toFloat()
-                        drawArc(
-                            color = colors[index],
-                            startAngle = startAngle,
-                            sweepAngle = sweepAngle,
-                            useCenter = false,
-                            size = Size(size.width, size.height),
-                            style = Stroke(width = 24.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        startAngle += sweepAngle
-                    }
+                Column {
+                    Text(
+                        text = if (intentLang == "te") "మొత్తం ఖర్చుల విశ్లేషణ" else "Expense Analytics",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "₹${String.format("%,.0f", totalAmount)}",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Total", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    Text("₹${String.format("%.0f", totalAmount)}", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+
+                // Smooth styled micro Tab Indicator
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val tabs = if (intentLang == "te") listOf("చార్ట్", "వివరాలు") else listOf("Chart", "Breakdown")
+                    tabs.forEachIndexed { index, title ->
+                        val isSelected = selectedTab == index
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                .clickable { selectedTab = index }
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = title,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) Color.Black else Color.Gray
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Graph Legend panel
-            Column(
-                modifier = Modifier.weight(1.8f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            // Interactive insight chip
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.03f))
+                    .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                categoryMap.entries.sortedByDescending { it.value }.take(5).forEach { (cat, amt) ->
-                    val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val highestCat = categoryMap.maxByOrNull { it.value }?.key ?: "None"
+                    val highestAmt = categoryMap[highestCat] ?: 0.0
+                    val highestPercentage = if (totalAmount > 0) (highestAmt / totalAmount) * 100 else 0.0
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFFFFA000), CircleShape)
+                    )
+                    Text(
+                        text = if (intentLang == "te") {
+                            "ప్రధాన వ్యయం: ${highestCat} (~${String.format("%.0f", highestPercentage)}%)"
+                        } else {
+                            "Heavy Source: ${highestCat} accounts for ${String.format("%.0f", highestPercentage)}% of budget"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.LightGray
+                    )
+                }
+            }
+
+            // Main Tab View switcher block
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = {
+                    fadeIn() togetherWith fadeOut()
+                },
+                label = "AnalyticsTabTransition"
+            ) { targetTab ->
+                if (targetTab == 0) {
+                    // INTERACTIVE DONUT VIEW
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Glowing Donut Ring Canvas (Tap highlights active category)
+                        Box(
+                            modifier = Modifier
+                                .size(135.dp)
+                                .weight(1.2f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                var startAngle = -90f
+                                categoryMap.forEach { (cat, amt) ->
+                                    val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
+                                    val sweepAngle = ((amt / totalAmount) * 360f).toFloat()
+                                    val isSelected = cat == selectedCategory
+                                    
+                                    val strokeWidth = if (isSelected) 18.dp.toPx() else 11.dp.toPx()
+                                    val diameterPadding = if (isSelected) 3.dp.toPx() else 8.dp.toPx()
+                                    
+                                    drawArc(
+                                        color = colors[index],
+                                        startAngle = startAngle,
+                                        sweepAngle = sweepAngle,
+                                        useCenter = false,
+                                        size = Size(size.width - diameterPadding, size.height - diameterPadding),
+                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                        topLeft = Offset(diameterPadding / 2, diameterPadding / 2)
+                                    )
+                                    startAngle += sweepAngle
+                                }
+                            }
+
+                            // Donut Center - Displays Live Highlight Data
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                val activeAmount = categoryMap[selectedCategory] ?: 0.0
+                                val activePercentage = (activeAmount / totalAmount) * 100
+                                
+                                Text(
+                                    text = selectedCategory,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "₹${String.format("%.0f", activeAmount)}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "${String.format("%.1f", activePercentage)}%",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        // Interactive Legend matching Donut segments
+                        Column(
+                            modifier = Modifier.weight(1.8f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            categoryMap.entries.sortedByDescending { it.value }.take(5).forEach { (cat, amt) ->
+                                val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
+                                val isSelected = cat == selectedCategory
+                                
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) Color.White.copy(alpha = 0.06f) else Color.Transparent)
+                                        .clickable { selectedCategory = cat }
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(colors[index], CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = cat,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) Color.White else Color.LightGray,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Text(
+                                        text = "₹${String.format("%.0f", amt)}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // DYNAMIC CATEGORY BUDGET PROGRESS LIST
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
+                        categoryMap.entries.sortedByDescending { it.value }.take(6).forEach { (cat, amt) ->
+                            val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
+                            val portion = (amt / totalAmount).toFloat()
+                            
+                            Column(
                                 modifier = Modifier
-                                    .size(10.dp)
-                                    .background(colors[index], CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(cat, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.02f))
+                                    .padding(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .background(colors[index], CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = cat,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            text = "₹${String.format("%,.0f", amt)}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "(${String.format("%.0f", portion * 100)}%)",
+                                            fontSize = 11.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                // Custom Gradient progress line element
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.05f))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(fraction = portion)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        colors[index],
+                                                        colors[index].copy(alpha = 0.6f)
+                                                    )
+                                                )
+                                            )
+                                    )
+                                }
+                            }
                         }
-                        Text(
-                            "₹${String.format("%.0f", amt)}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
                     }
                 }
             }

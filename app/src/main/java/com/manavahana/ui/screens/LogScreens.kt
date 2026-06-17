@@ -752,7 +752,7 @@ fun ExpensesScreen(
     // Form items
     var vehicleId by remember { mutableStateOf(0) }
     var category by remember { mutableStateOf("Fuel") }
-    val categories = listOf("Fuel", "Repairs", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous")
+    val categories = listOf("Fuel", "Service", "Insurance", "Washing", "Accessories", "Parking", "Toll", "Miscellaneous")
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var expenseDate by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -1648,9 +1648,9 @@ fun DocumentVaultScreen(
                                 isEncrypted = true
                             )
                             if (editingDoc != null) {
-                                viewModel.updateDocument(newDoc)
+                                viewModel.updateDocument(context, newDoc)
                             } else {
-                                viewModel.addDocument(newDoc)
+                                viewModel.addDocument(context, newDoc)
                             }
                             showAddDialog = false
                             resetFields()
@@ -1677,7 +1677,7 @@ fun DocumentVaultScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        itemToDelete?.let { viewModel.deleteDocument(it) }
+                        itemToDelete?.let { viewModel.deleteDocument(context, it) }
                         itemToDelete = null
                     }
                 ) {

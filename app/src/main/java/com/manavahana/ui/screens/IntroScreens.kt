@@ -29,6 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.ui.res.painterResource
+import com.manavahana.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manavahana.ui.ManaVahanaViewModel
@@ -81,16 +85,16 @@ fun SplashScreen(
             // Elegant Symbolic Wheel with Golden shine
             Box(
                 modifier = Modifier
-                    .size(100.dp)
-                    .background(Color.White.copy(alpha = 0.15f), CircleShape),
+                    .size(110.dp)
+                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                    .border(2.dp, Color(0xFFFFD700).copy(alpha = 0.3f), CircleShape)
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "మన",
-                    color = Color(0xFFFFD700),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif
+                Image(
+                    painter = painterResource(id = R.drawable.telugu_vehicle_app_icon_1779703541893),
+                    contentDescription = "ManaVahana Logo",
+                    modifier = Modifier.fillMaxSize().clip(CircleShape)
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -168,13 +172,14 @@ fun OnboardingScreen(
                         Surface(
                             modifier = Modifier.size(120.dp),
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer
+                            color = Color(0xFF1B1B1D),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = if (langCode == "te") "వాహన" else if (langCode == "hi") "वाहन" else "Vahana",
-                                    fontSize = 42.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                            Box(modifier = Modifier.padding(12.dp), contentAlignment = Alignment.Center) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.telugu_vehicle_app_icon_1779703541893),
+                                    contentDescription = "ManaVahana App Icon",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
                                 )
                             }
                         }
@@ -202,7 +207,9 @@ fun OnboardingScreen(
                         )
                         Spacer(modifier = Modifier.height(48.dp))
                         Button(
-                            onClick = { step = 2 },
+                            onClick = {
+                                step = 2
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp)
@@ -579,15 +586,14 @@ fun LanguageSelectionScreen(
                     Surface(
                         modifier = Modifier.size(90.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color(0xFF1B1B1D),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "మన",
-                                color = Color(0xFFFFD700),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif
+                        Box(modifier = Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+                            Image(
+                                painter = painterResource(id = R.drawable.telugu_vehicle_app_icon_1779703541893),
+                                contentDescription = "ManaVahana Logo",
+                                modifier = Modifier.fillMaxSize().clip(CircleShape)
                             )
                         }
                     }

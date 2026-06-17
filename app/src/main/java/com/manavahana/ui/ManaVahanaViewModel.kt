@@ -20,27 +20,6 @@ class ManaVahanaViewModel(
     private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
-    init {
-        viewModelScope.launch {
-            try {
-                val adminEmail = "admin"
-                val existing = repository.getUserByEmail(adminEmail)
-                if (existing == null) {
-                    val hashedPass = hashPassword("admin123")
-                    val adminUser = User(
-                        email = adminEmail,
-                        name = "Admin Tester",
-                        passwordHash = hashedPass,
-                        createdAt = System.currentTimeMillis()
-                    )
-                    repository.insertUser(adminUser)
-                }
-            } catch (e: java.lang.Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     // Onboarding and Security PIN Preferences
     val isOnboardingCompleted = preferencesRepository.isOnboardingCompleted
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -52,6 +31,9 @@ class ManaVahanaViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val isFingerprintEnabled = preferencesRepository.isFingerprintEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isBiometricPromptShown = preferencesRepository.isBiometricPromptShown
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val themeMode = preferencesRepository.themeMode
@@ -66,96 +48,6 @@ class ManaVahanaViewModel(
     fun updateSimulatedAppVersion(version: String) {
         viewModelScope.launch {
             preferencesRepository.saveOverriddenAppVersion(version)
-        }
-    }
-
-    // User Session / Offline Profile State Flow
-    val currentUserState = preferencesRepository.jwtToken.map { token ->
-        if (token.isNullOrBlank()) {
-            null
-        } else {
-            JwtHelper.verifyAndParse(token)
-        }
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        null
-    )
-
-    // JWT Authentication State
-    private val _authState = MutableStateFlow<AuthResult>(AuthResult.Idle)
-    val authState: StateFlow<AuthResult> = _authState.asStateFlow()
-
-    fun resetAuthState() {
-        _authState.value = AuthResult.Idle
-    }
-
-    private fun hashPassword(password: String): String {
-        return try {
-            val digest = java.security.MessageDigest.getInstance("SHA-256")
-            val hash = digest.digest(password.toByteArray(Charsets.UTF_8))
-            hash.fold("") { str, it -> str + "%02x".format(it) }
-        } catch (e: Exception) {
-            password
-        }
-    }
-
-    fun registerUser(username: String, tempPass: String) {
-        viewModelScope.launch {
-            _authState.value = AuthResult.Loading
-            if (username.isBlank() || tempPass.isBlank()) {
-                _authState.value = AuthResult.Error("Username and password are required")
-                return@launch
-            }
-            try {
-                val existing = repository.getUserByEmail(username.trim())
-                if (existing != null) {
-                    _authState.value = AuthResult.Error("Username already registered")
-                    return@launch
-                }
-
-                val hashed = hashPassword(tempPass)
-                val user = User(
-                    email = username.trim(),
-                    name = username.trim(),
-                    passwordHash = hashed,
-                    createdAt = System.currentTimeMillis()
-                )
-                val newId = repository.insertUser(user)
-                val jwt = JwtHelper.generateToken(newId.toInt(), user.email, user.name)
-                preferencesRepository.saveJwtToken(jwt)
-                _authState.value = AuthResult.Success(jwt, "User registered successfully!")
-            } catch (e: Exception) {
-                _authState.value = AuthResult.Error("Registration failed: ${e.message}")
-            }
-        }
-    }
-
-    fun loginUser(username: String, tempPass: String) {
-        viewModelScope.launch {
-            _authState.value = AuthResult.Loading
-            if (username.isBlank() || tempPass.isBlank()) {
-                _authState.value = AuthResult.Error("Username and password are required")
-                return@launch
-            }
-            try {
-                val user = repository.getUserByEmail(username.trim())
-                if (user == null) {
-                    _authState.value = AuthResult.Error("User not found")
-                    return@launch
-                }
-                val hashedInput = hashPassword(tempPass)
-                if (user.passwordHash != hashedInput) {
-                    _authState.value = AuthResult.Error("Invalid password")
-                    return@launch
-                }
-
-                val jwt = JwtHelper.generateToken(user.id, user.email, user.name)
-                preferencesRepository.saveJwtToken(jwt)
-                _authState.value = AuthResult.Success(jwt, "Log In successful!")
-            } catch (e: Exception) {
-                _authState.value = AuthResult.Error("Login failed: ${e.message}")
-            }
         }
     }
 
@@ -174,13 +66,6 @@ class ManaVahanaViewModel(
 
     fun bypassPinVerification() {
         _isPinVerified.value = true
-    }
-
-    fun logout() {
-        _isPinVerified.value = false
-        viewModelScope.launch {
-            preferencesRepository.clearJwtToken()
-        }
     }
 
     fun completeOnboarding(pin: String?) {
@@ -206,6 +91,12 @@ class ManaVahanaViewModel(
     fun setFingerprintEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.setFingerprintEnabled(enabled)
+        }
+    }
+
+    fun setBiometricPromptShown(shown: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setBiometricPromptShown(shown)
         }
     }
 
@@ -364,7 +255,7 @@ class ManaVahanaViewModel(
                     Expense(
                         vehicleId = log.vehicleId,
                         expenseDate = log.serviceDate,
-                        category = "Repairs",
+                        category = "Service",
                         amount = log.cost,
                         notes = "Service log cost: ${log.serviceType} at ${log.serviceCenter}"
                     )
@@ -443,25 +334,28 @@ class ManaVahanaViewModel(
         }
     }
 
-    fun addDocument(document: Document) {
+    fun addDocument(context: android.content.Context, document: Document) {
         viewModelScope.launch {
-            repository.insertDocument(document)
+            val generatedId = repository.insertDocument(document)
+            val finalDoc = document.copy(id = generatedId.toInt())
             // Auto add reminder if an expiry date is set
-            if (document.expiryDate != null && document.expiryDate > 0) {
+            if (finalDoc.expiryDate != null && finalDoc.expiryDate > 0) {
                 repository.insertReminder(
                     Reminder(
-                        vehicleId = document.vehicleId,
-                        title = "${document.title} Expiry",
-                        description = "Document ${document.title} is expiring. Renew in time.",
-                        reminderDate = document.expiryDate,
-                        category = if (document.docType == "Insurance") "Insurance" else if (document.docType == "Pollution Certificate") "Pollution" else "License"
+                        vehicleId = finalDoc.vehicleId,
+                        title = "${finalDoc.title} Expiry",
+                        description = "Document ${finalDoc.title} is expiring. Renew in time.",
+                        reminderDate = finalDoc.expiryDate,
+                        category = if (finalDoc.docType == "Insurance") "Insurance" else if (finalDoc.docType == "Pollution Certificate") "Pollution" else "License"
                     )
                 )
+                // Schedule WorkManager notification alarms
+                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(context.applicationContext, finalDoc)
             }
         }
     }
 
-    fun deleteDocument(document: Document) {
+    fun deleteDocument(context: android.content.Context, document: Document) {
         viewModelScope.launch {
             repository.deleteDocument(document)
             try {
@@ -473,10 +367,12 @@ class ManaVahanaViewModel(
             } catch (e: Exception) {
                 // Ignore
             }
+            // Cancel WorkManager notification alarm
+            com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(context.applicationContext, document.id)
         }
     }
 
-    fun updateDocument(document: Document) {
+    fun updateDocument(context: android.content.Context, document: Document) {
         viewModelScope.launch {
             repository.updateDocument(document)
             try {
@@ -498,6 +394,11 @@ class ManaVahanaViewModel(
                         category = if (document.docType == "Insurance") "Insurance" else if (document.docType == "Pollution Certificate") "Pollution" else "License"
                     )
                 )
+                // Re-schedule WorkManager notification alarms
+                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(context.applicationContext, document)
+            } else {
+                // Cancel scheduled notification if clear
+                com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(context.applicationContext, document.id)
             }
         }
     }

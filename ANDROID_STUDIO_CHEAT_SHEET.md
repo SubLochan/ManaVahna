@@ -60,3 +60,27 @@ The project uses the **Secrets Gradle Plugin** to load access keys cleanly via s
 2. Duplicate it and rename it to `.env` in the root folder.
 3. Replace the placeholder values with your real API credentials or credentials in the newly created `.env` file.
 4. The Gradle secrets plugin will automatically inject them into the `BuildConfig` file during build-time securely!
+
+---
+
+## 🔑 Keystore & Debug Signing Configuration
+When exporting the project from an online sandbox, a custom project-specific `debug.keystore` file is often omitted. 
+
+### 1. Zero-Config Fallback (Highly Recommended)
+We have updated `app/build.gradle.kts` to naturally detect if `debug.keystore` is absent from the root directory. If it is not found, **Gradle will automatically fall back to your local Android SDK's standard debug keystore**. 
+* Just clean, sync and run! Gradle handles it out of the box dynamically.
+
+### 2. Replacing with Your Own Custom Keystore
+If you want to use the signed key you generated in Android Studio:
+1. Copy your custom `.keystore` or `.jks` file to your project root folder (`D:\Android_Projects\ManaVahna\`).
+2. Open `app/build.gradle.kts` in Android Studio and edit the `debugConfig` block under `signingConfigs`:
+   ```kotlin
+   create("debugConfig") {
+     storeFile = file("${rootDir}/your_keystore_name.jks") // Replace with your keystore name
+     storePassword = "your_keystore_password"
+     keyAlias = "your_key_alias"
+     keyPassword = "your_key_password"
+   }
+   ```
+3. Sync Gradle and compile! Your custom signature will be embedded.
+
