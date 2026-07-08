@@ -12,6 +12,16 @@ android {
   compileSdk = 36
   ndkVersion = "25.1.8937393"
 
+  defaultConfig {
+    applicationId = "com.Lochan.ManaVahana"
+    minSdk = 24
+    targetSdk = 36
+    versionCode = 13
+    versionName = "2.4"
+
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }
+
   signingConfigs {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/ManaVahna_key.jks"
@@ -28,17 +38,6 @@ android {
         keyPassword = "android"
       }
     }
-  }
-
-  defaultConfig {
-    applicationId = "com.Lochan.ManaVahana"
-    minSdk = 24
-    targetSdk = 36
-    versionCode = 10
-    versionName = "2.1"
-
-    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    signingConfig = signingConfigs.getByName("release")
   }
 
   buildTypes {

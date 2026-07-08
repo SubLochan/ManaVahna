@@ -49,7 +49,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
     private val _updateStatus = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
     val updateStatus: StateFlow<UpdateStatus> = _updateStatus.asStateFlow()
 
-    private val _livePlayStoreVersion = MutableStateFlow<String>("Not checked yet")
+    private val _livePlayStoreVersion = MutableStateFlow("Not checked yet")
     val livePlayStoreVersion: StateFlow<String> = _livePlayStoreVersion.asStateFlow()
 
     private var notifiedVersionCode: Int = -1
@@ -75,7 +75,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
         }
     }
 
-    fun checkForUpdates() {
+    fun checkForUpdates(forceNotification: Boolean = false) {
         _updateStatus.value = UpdateStatus.Checking
         fetchPlayStoreVersionDirectly()
         if (appUpdateManager == null) {
@@ -97,7 +97,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
                         isSimulation = false,
                         appUpdateInfo = appUpdateInfo
                     )
-                    showNotification(vCode)
+                    showNotification(vCode, force= forceNotification)
                 } else {
                     _updateStatus.value = UpdateStatus.UpToDate
                 }
@@ -120,7 +120,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
             appUpdateInfo = null
         )
         fetchPlayStoreVersionDirectly()
-        showNotification(vCode)
+        showNotification(vCode, force = true)
     }
 
     fun resetStatus() {
@@ -129,8 +129,8 @@ class AppUpdateHelper private constructor(private val context: Context) {
         notifiedVersionCode = -1
     }
 
-    private fun showNotification(versionCode: Int) {
-        if (notifiedVersionCode == versionCode) {
+    private fun showNotification(versionCode: Int, force: Boolean = false) {
+        if (!force && notifiedVersionCode == versionCode) {
             return
         }
         notifiedVersionCode = versionCode
@@ -168,12 +168,28 @@ class AppUpdateHelper private constructor(private val context: Context) {
             val langCode = if (langCodeListened.isNullOrEmpty()) "en" else langCodeListened
 
             val title = Localizer.get("update_available_title", langCode)
-            val versionStr = if (_livePlayStoreVersion.value != "Retrieving..." && _livePlayStoreVersion.value != "Not checked yet" && _livePlayStoreVersion.value.isNotEmpty()) {
-                _livePlayStoreVersion.value
-            } else {
-                "1.6"
+
+            // Suspend and wait for the live Play Store version if it's currently fetching
+            var versionStr = _livePlayStoreVersion.value
+            if (versionStr == "Retrieving..." || versionStr == "Not checked yet") {
+                val fetched = kotlinx.coroutines.withTimeoutOrNull(3000) {
+                    _livePlayStoreVersion.firstOrNull { it != "Retrieving..." && it != "Not checked yet" }
+                }
+                if (fetched != null) {
+                    versionStr = fetched
+                }
             }
+            if (versionStr == "Retrieving..." || versionStr == "Not checked yet" || versionStr.isEmpty()) {
+                versionStr = "1.6"
+            }
+
             val desc = Localizer.get("update_available_desc", langCode).replace("%1\$s", versionStr)
+
+            val largeIconBitmap = try {
+                android.graphics.BitmapFactory.decodeResource(context.resources, com.manavahana.R.mipmap.ic_launcher)
+            } catch (_: Exception) {
+                null
+            }
 
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -183,6 +199,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .apply {
+                    largeIconBitmap?.let { setLargeIcon(it) }
                     pendingIntent?.let { setContentIntent(it) }
                 }
 
@@ -227,12 +244,27 @@ class AppUpdateHelper private constructor(private val context: Context) {
     fun openPlayStore(activity: Activity) {
         val packageName = activity.packageName
         try {
-            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
+            android.widget.Toast.makeText(
+                activity,
+                "Redirecting to Google Play Store...",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            activity.startActivity(intent)
         } catch (e: Exception) {
             try {
-                activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
-            } catch (ex: Exception) {
-                Log.e("AppUpdateHelper", "Unable to launch Play Store: ${ex.message}")
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                activity.startActivity(intent)
+            } catch (anfe: Exception) {
+                android.widget.Toast.makeText(
+                    activity,
+                    "Google Play Store could not be opened.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

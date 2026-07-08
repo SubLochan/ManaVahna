@@ -633,7 +633,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { updateHelper.checkForUpdates() },
+                            onClick = { updateHelper.checkForUpdates(forceNotification = true) },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {

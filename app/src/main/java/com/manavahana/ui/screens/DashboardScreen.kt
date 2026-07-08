@@ -88,33 +88,41 @@ fun DashboardScreen(
     val allExpenses by viewModel.allExpenses.collectAsState()
     val allReminders by viewModel.pendingReminders.collectAsState()
     val allFuelLogs by viewModel.allFuelLogs.collectAsState()
+    val allServiceLogs by viewModel.allServiceLogs.collectAsState()
 
     val totalVehicles = vehicles.size
-    val currentMonthExpenses = remember(allExpenses) {
+    val currentMonthExpenses = remember(allExpenses, allServiceLogs) {
         val currentMonth = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
-        allExpenses.filter {
+        val expensesSum = allExpenses.filter {
             SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
         }.sumOf { it.amount }
+        val servicesSum = allServiceLogs.filter {
+            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
+        }.sumOf { it.cost }
+        expensesSum + servicesSum
     }
 
     val selectedVehicle by viewModel.selectedVehicle.collectAsState()
     val mileageValue by viewModel.selectedVehicleMileage.collectAsState(initial = 0.0)
 
-    val allServiceLogs by viewModel.allServiceLogs.collectAsState()
     val lastOdometer = remember(selectedVehicle, allFuelLogs, allServiceLogs) {
         val fuelOdo = allFuelLogs.filter { it.vehicleId == selectedVehicle?.id }.maxOfOrNull { it.odometerReading } ?: 0.0
         val serviceOdo = allServiceLogs.filter { it.vehicleId == selectedVehicle?.id }.maxOfOrNull { it.odometerReading } ?: 0.0
         maxOf(fuelOdo, serviceOdo)
     }
 
-    val selectedVehicleMonthExpenses = remember(selectedVehicle, allExpenses) {
+    val selectedVehicleMonthExpenses = remember(selectedVehicle, allExpenses, allServiceLogs) {
         val currentMonth = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
-        allExpenses.filter {
+        val expensesSum = allExpenses.filter {
             it.vehicleId == selectedVehicle?.id &&
-            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
+                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
         }.sumOf { it.amount }
+        val servicesSum = allServiceLogs.filter {
+            it.vehicleId == selectedVehicle?.id &&
+                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
+        }.sumOf { it.cost }
+        expensesSum + servicesSum
     }
-
     val isPinLockEnabled by viewModel.isPinLockEnabled.collectAsState()
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
     val isBiometricPromptShown by viewModel.isBiometricPromptShown.collectAsState()
@@ -336,7 +344,6 @@ fun DashboardScreen(
                                                 updateHelper.openPlayStore(activity)
                                             }
                                         }
-                                        android.widget.Toast.makeText(context, "Opening Google Play Store for version $versionStr Update!", android.widget.Toast.LENGTH_LONG).show()
                                         updateHelper.resetStatus()
                                     },
                                     colors = ButtonDefaults.buttonColors(
@@ -810,10 +817,51 @@ fun DashboardScreen(
                         }
 
                         // Card 2: Custom Monthly Expense Active Tracker (Highlighted in mockup)
-                        Card(
+                            Card(
                             modifier = Modifier
                                 .width(155.dp)
-                                .height(130.dp),
+                                .height(130.dp)
+                                .clickable {
+                            if (selectedVehicle != null) {
+                                Toast.makeText(context, "Generating Monthly PDF Report...", Toast.LENGTH_SHORT).show()
+                                val uri = PdfGenerator.generateVehicleMonthlyReport(
+                                    context = context,
+                                    vehicle = selectedVehicle!!,
+                                    expenses = allExpenses,
+                                    fuelLogs = allFuelLogs,
+                                    serviceLogs = allServiceLogs,
+                                    reminders = allReminders
+                                )
+                                if (uri != null) {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(uri, "application/pdf")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "Open Monthly Expenses Report"))
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        try {
+                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "application/pdf"
+                                                putExtra(Intent.EXTRA_STREAM, uri)
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share Monthly Expenses Report"))
+                                        } catch (ex: Exception) {
+                                            ex.printStackTrace()
+                                            Toast.makeText(context, "No app available to open or share PDF.", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Failed to generate PDF Report.", Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                Toast.makeText(context, "Please add or select a vehicle first.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                            .testTag("monthly_expenses_report_card"),
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF242220)), // Subtle highlight tint
                             border = BorderStroke(1.dp, Color(0xFFFFA000)) // Highlight border exactly like screenshot

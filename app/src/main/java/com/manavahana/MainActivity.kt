@@ -515,6 +515,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1012) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                try {
+                    com.manavahana.ui.AppUpdateHelper.getInstance(this).checkForUpdates()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
 }
 
 data class BottomNavItem(

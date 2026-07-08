@@ -896,19 +896,43 @@ fun VehicleDetailsScreen(
                         }
                         item {
                             val displayExpiry = if (docExpiryDate > 0) sdf.format(Date(docExpiryDate)) else "No Expiry / Lifetime"
-                            OutlinedTextField(
-                                value = displayExpiry,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(getLocalizedText("Expiry Date", langCode)) },
-                                modifier = Modifier.fillMaxWidth().clickable {
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
                                     val c = Calendar.getInstance()
                                     DatePickerDialog(context, { _, y, m, d ->
                                         val sel = Calendar.getInstance().apply { set(y, m, d) }
                                         docExpiryDate = sel.timeInMillis
                                     }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
                                 }
-                            )
+                            ) {
+                                OutlinedTextField(
+                                    value = displayExpiry,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    enabled = false,
+                                    label = { Text(getLocalizedText("Expiry Date", langCode)) },
+                                    modifier = Modifier.fillMaxWidth().testTag("document_expiry_date_input"),
+                                    trailingIcon = {
+                                        if (docExpiryDate > 0) {
+                                            IconButton(onClick = { docExpiryDate = 0L }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Clear Date")
+                                            }
+                                        } else {
+                                            Icon(Icons.Default.CalendarToday, contentDescription = "Select Expiry Date")
+                                        }
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledPrefixColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledSuffixColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
+                            }
                         }
                         item {
                             Button(
