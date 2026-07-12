@@ -1572,6 +1572,15 @@ fun DocumentVaultScreen(
                     }
 
                     item {
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = { title = it },
+                            label = { Text("Document Title (e.g., My RC Copy)") },
+                            modifier = Modifier.fillMaxWidth().testTag("document_title_input")
+                        )
+                    }
+
+                    item {
                         val displayExpiry = if (expiryDate > 0) sdf.format(Date(expiryDate)) else "No Expiry / Lifetime"
                         Box(modifier = Modifier
                             .fillMaxWidth()

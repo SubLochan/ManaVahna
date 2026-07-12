@@ -49,7 +49,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
     private val _updateStatus = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
     val updateStatus: StateFlow<UpdateStatus> = _updateStatus.asStateFlow()
 
-    private val _livePlayStoreVersion = MutableStateFlow("Not checked yet")
+    private val _livePlayStoreVersion = MutableStateFlow<String>("Not checked yet")
     val livePlayStoreVersion: StateFlow<String> = _livePlayStoreVersion.asStateFlow()
 
     private var notifiedVersionCode: Int = -1
@@ -61,6 +61,10 @@ class AppUpdateHelper private constructor(private val context: Context) {
         null
     }
 
+    fun setLivePlayStoreVersion(version: String) {
+        _livePlayStoreVersion.value = version
+    }
+
     fun fetchPlayStoreVersionDirectly() {
         _livePlayStoreVersion.value = "Retrieving..."
         scope.launch {
@@ -69,8 +73,14 @@ class AppUpdateHelper private constructor(private val context: Context) {
             if (version != null) {
                 _livePlayStoreVersion.value = version
             } else {
-                // Return "1.6" as the verified live Play Store version fallback for the application.
-                _livePlayStoreVersion.value = "1.6"
+                // If not found in Play Store (not published yet), default to current installed version name to avoid false update indications
+                val packageInfo = try {
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                } catch (e: Exception) {
+                    null
+                }
+                val installedVersion = packageInfo?.versionName ?: "1.0"
+                _livePlayStoreVersion.value = installedVersion
             }
         }
     }
@@ -97,7 +107,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
                         isSimulation = false,
                         appUpdateInfo = appUpdateInfo
                     )
-                    showNotification(vCode, force= forceNotification)
+                    showNotification(vCode, force = forceNotification)
                 } else {
                     _updateStatus.value = UpdateStatus.UpToDate
                 }
@@ -119,7 +129,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
             isSimulation = true,
             appUpdateInfo = null
         )
-        fetchPlayStoreVersionDirectly()
+        _livePlayStoreVersion.value = "1.6"
         showNotification(vCode, force = true)
     }
 
@@ -187,19 +197,21 @@ class AppUpdateHelper private constructor(private val context: Context) {
 
             val largeIconBitmap = try {
                 android.graphics.BitmapFactory.decodeResource(context.resources, com.manavahana.R.mipmap.ic_launcher)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 null
             }
 
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
+                .apply {
+                    largeIconBitmap?.let { setLargeIcon(it) }
+                }
                 .setContentTitle(title)
                 .setContentText(desc)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(desc))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .apply {
-                    largeIconBitmap?.let { setLargeIcon(it) }
                     pendingIntent?.let { setContentIntent(it) }
                 }
 
@@ -242,7 +254,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
     }
 
     fun openPlayStore(activity: Activity) {
-        val packageName = activity.packageName
+        val packageName = "com.lochan.ManaVahana"
         try {
             android.widget.Toast.makeText(
                 activity,

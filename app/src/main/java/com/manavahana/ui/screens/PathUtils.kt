@@ -23,4 +23,10 @@ object PathUtils {
         val file = getResolutionFile(context, pathString)
         return file?.absolutePath ?: pathString
     }
+
+    fun getResolutionUriString(context: Context, pathString: String?): String? {
+        if (pathString.isNullOrBlank()) return null
+        val file = getResolutionFile(context, pathString)
+        return if (file != null) "file://${file.absolutePath}" else pathString
+    }
 }

@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.manavahana.ui.AppUpdateHelper
 import com.manavahana.ui.UpdateStatus
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
@@ -26,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -91,6 +93,17 @@ fun DashboardScreen(
     val allServiceLogs by viewModel.allServiceLogs.collectAsState()
 
     val totalVehicles = vehicles.size
+
+    val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
     val currentMonthExpenses = remember(allExpenses, allServiceLogs) {
         val currentMonth = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
         val expensesSum = allExpenses.filter {
@@ -115,14 +128,15 @@ fun DashboardScreen(
         val currentMonth = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
         val expensesSum = allExpenses.filter {
             it.vehicleId == selectedVehicle?.id &&
-                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
+            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
         }.sumOf { it.amount }
         val servicesSum = allServiceLogs.filter {
             it.vehicleId == selectedVehicle?.id &&
-                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
+            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
         }.sumOf { it.cost }
         expensesSum + servicesSum
     }
+
     val isPinLockEnabled by viewModel.isPinLockEnabled.collectAsState()
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
     val isBiometricPromptShown by viewModel.isBiometricPromptShown.collectAsState()
@@ -567,20 +581,35 @@ fun DashboardScreen(
                                             )
                                         }
 
-                                        if (!pageVeh.vehicleImage.isNullOrBlank()) {
-                                            Spacer(modifier = Modifier.width(10.dp))
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(width = 150.dp, height = 150.dp) // Noticeably INCREASED image size!
-                                                    .clip(RoundedCornerShape(14.dp))
-                                                    .background(Color.White.copy(alpha = 0.25f))
-                                                    .border(1.dp, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
-                                            ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(width = 150.dp, height = 150.dp) // Noticeably INCREASED image size!
+                                                .clip(RoundedCornerShape(14.dp))
+                                                .background(Color.White.copy(alpha = 0.25f))
+                                                .border(1.dp, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            val heroFileExists = if (!pageVeh.vehicleImage.isNullOrBlank() && (pageVeh.vehicleImage.startsWith("file://") || pageVeh.vehicleImage.startsWith("/"))) {
+                                                val file = PathUtils.getResolutionFile(context, pageVeh.vehicleImage)
+                                                file != null && file.exists()
+                                            } else {
+                                                true
+                                            }
+
+                                            if (!pageVeh.vehicleImage.isNullOrBlank() && heroFileExists) {
                                                 AsyncImage(
-                                                    model = PathUtils.getResolutionFile(context, pageVeh.vehicleImage) ?: pageVeh.vehicleImage,
+                                                    model = PathUtils.getResolutionUriString(context, pageVeh.vehicleImage),
                                                     contentDescription = "Vehicle Image",
                                                     modifier = Modifier.fillMaxSize(),
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                    error = androidx.compose.ui.graphics.painter.ColorPainter(Color.Black.copy(alpha = 0.1f))
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = getVehicleIcon(pageVeh.vehicleType),
+                                                    contentDescription = null,
+                                                    tint = Color.Black.copy(alpha = 0.5f),
+                                                    modifier = Modifier.size(64.dp)
                                                 )
                                             }
                                         }
@@ -817,51 +846,51 @@ fun DashboardScreen(
                         }
 
                         // Card 2: Custom Monthly Expense Active Tracker (Highlighted in mockup)
-                            Card(
+                        Card(
                             modifier = Modifier
                                 .width(155.dp)
                                 .height(130.dp)
                                 .clickable {
-                            if (selectedVehicle != null) {
-                                Toast.makeText(context, "Generating Monthly PDF Report...", Toast.LENGTH_SHORT).show()
-                                val uri = PdfGenerator.generateVehicleMonthlyReport(
-                                    context = context,
-                                    vehicle = selectedVehicle!!,
-                                    expenses = allExpenses,
-                                    fuelLogs = allFuelLogs,
-                                    serviceLogs = allServiceLogs,
-                                    reminders = allReminders
-                                )
-                                if (uri != null) {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(uri, "application/pdf")
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        context.startActivity(Intent.createChooser(intent, "Open Monthly Expenses Report"))
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        try {
-                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                type = "application/pdf"
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    if (selectedVehicle != null) {
+                                        Toast.makeText(context, "Generating Monthly PDF Report...", Toast.LENGTH_SHORT).show()
+                                        val uri = PdfGenerator.generateVehicleMonthlyReport(
+                                            context = context,
+                                            vehicle = selectedVehicle!!,
+                                            expenses = allExpenses,
+                                            fuelLogs = allFuelLogs,
+                                            serviceLogs = allServiceLogs,
+                                            reminders = allReminders
+                                        )
+                                        if (uri != null) {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                    setDataAndType(uri, "application/pdf")
+                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                                context.startActivity(Intent.createChooser(intent, "Open Monthly Expenses Report"))
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                                try {
+                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "application/pdf"
+                                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    }
+                                                    context.startActivity(Intent.createChooser(shareIntent, "Share Monthly Expenses Report"))
+                                                } catch (ex: Exception) {
+                                                    ex.printStackTrace()
+                                                    Toast.makeText(context, "No app available to open or share PDF.", Toast.LENGTH_LONG).show()
+                                                }
                                             }
-                                            context.startActivity(Intent.createChooser(shareIntent, "Share Monthly Expenses Report"))
-                                        } catch (ex: Exception) {
-                                            ex.printStackTrace()
-                                            Toast.makeText(context, "No app available to open or share PDF.", Toast.LENGTH_LONG).show()
+                                        } else {
+                                            Toast.makeText(context, "Failed to generate PDF Report.", Toast.LENGTH_LONG).show()
                                         }
+                                    } else {
+                                        Toast.makeText(context, "Please add or select a vehicle first.", Toast.LENGTH_LONG).show()
                                     }
-                                } else {
-                                    Toast.makeText(context, "Failed to generate PDF Report.", Toast.LENGTH_LONG).show()
                                 }
-                            } else {
-                                Toast.makeText(context, "Please add or select a vehicle first.", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                            .testTag("monthly_expenses_report_card"),
+                                .testTag("monthly_expenses_report_card"),
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF242220)), // Subtle highlight tint
                             border = BorderStroke(1.dp, Color(0xFFFFA000)) // Highlight border exactly like screenshot
@@ -908,63 +937,111 @@ fun DashboardScreen(
                         // Card 3: Switch Selectable Vehicles list
                         vehicles.forEach { veh ->
                             val isSelected = selectedVehicle?.id == veh.id
-                            if (!isSelected) {
-                                Card(
+                            
+                            val borderStroke = if (isSelected) {
+                                BorderStroke(
+                                    2.dp,
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFFFFA000).copy(alpha = glowAlpha),
+                                            Color(0xFFFFB300),
+                                            Color(0xFFFFD54F).copy(alpha = glowAlpha)
+                                        )
+                                    )
+                                )
+                            } else {
+                                BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
+                            }
+                            
+                            val cardBgColor = if (isSelected) {
+                                Color(0xFF2E261F)
+                            } else {
+                                Color(0xFF1C1C1E)
+                            }
+                            
+                            val cardModifier = if (isSelected) {
+                                Modifier
+                                    .width(150.dp)
+                                    .height(130.dp)
+                                    .shadow(
+                                        elevation = (8 * glowAlpha).dp,
+                                        shape = RoundedCornerShape(18.dp),
+                                        clip = false,
+                                        ambientColor = Color(0xFFFFA000),
+                                        spotColor = Color(0xFFFFA000)
+                                    )
+                                    .clickable { viewModel.selectVehicle(veh.id) }
+                                    .testTag("select_vehicle_${veh.id}")
+                            } else {
+                                Modifier
+                                    .width(150.dp)
+                                    .height(130.dp)
+                                    .clickable { viewModel.selectVehicle(veh.id) }
+                                    .testTag("select_vehicle_${veh.id}")
+                            }
+
+                            Card(
+                                modifier = cardModifier,
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = cardBgColor),
+                                border = borderStroke
+                            ) {
+                                Column(
                                     modifier = Modifier
-                                        .width(150.dp)
-                                        .height(130.dp)
-                                        .clickable { viewModel.selectVehicle(veh.id) }
-                                        .testTag("select_vehicle_${veh.id}"),
-                                    shape = RoundedCornerShape(18.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-                                    border = BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
+                                        .fillMaxSize()
+                                        .padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Column(
+                                    Box(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(12.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.SpaceBetween
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (isSelected) Color(0xFFFFA000).copy(alpha = 0.15f)
+                                                else Color.White.copy(alpha = 0.05f)
+                                            ),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(38.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.05f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (!veh.vehicleImage.isNullOrBlank()) {
-                                                AsyncImage(
-                                                    model = PathUtils.getResolutionFile(context, veh.vehicleImage) ?: veh.vehicleImage,
-                                                    contentDescription = "Vehicle Grid Image",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = getVehicleIcon(veh.vehicleType),
-                                                    contentDescription = null,
-                                                    tint = Color.White.copy(alpha = 0.8f),
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
+                                        val resolvedUri = PathUtils.getResolutionUriString(context, veh.vehicleImage)
+                                        val fileExists = if (!veh.vehicleImage.isNullOrBlank() && (veh.vehicleImage.startsWith("file://") || veh.vehicleImage.startsWith("/"))) {
+                                            val file = PathUtils.getResolutionFile(context, veh.vehicleImage)
+                                            file != null && file.exists()
+                                        } else {
+                                            true
                                         }
 
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text(
-                                                text = veh.vehicleName,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                        if (!veh.vehicleImage.isNullOrBlank() && fileExists) {
+                                            AsyncImage(
+                                                model = resolvedUri,
+                                                contentDescription = "Vehicle Grid Image",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                             )
-                                            Text(
-                                                text = veh.vehicleNumber.uppercase(),
-                                                fontSize = 10.sp,
-                                                color = Color.Gray
+                                        } else {
+                                            Icon(
+                                                imageVector = getVehicleIcon(veh.vehicleType),
+                                                contentDescription = null,
+                                                tint = if (isSelected) Color(0xFFFFA000) else Color.White.copy(alpha = 0.8f),
+                                                modifier = Modifier.size(18.dp)
                                             )
                                         }
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = veh.vehicleName,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) Color(0xFFFFA000) else Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = veh.vehicleNumber.uppercase(),
+                                            fontSize = 10.sp,
+                                            color = if (isSelected) Color(0xFFFFD54F).copy(alpha = 0.8f) else Color.Gray
+                                        )
                                     }
                                 }
                             }
