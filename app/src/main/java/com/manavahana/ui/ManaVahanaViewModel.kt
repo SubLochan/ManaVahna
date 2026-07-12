@@ -1,11 +1,11 @@
-package com.example.ui
+package com.manavahana.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.model.*
-import com.example.data.preferences.UserPreferencesRepository
-import com.example.data.repository.ManaVahanaRepository
+import com.manavahana.data.model.*
+import com.manavahana.data.preferences.UserPreferencesRepository
+import com.manavahana.data.repository.ManaVahanaRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,6 +19,27 @@ class ManaVahanaViewModel(
     private val repository: ManaVahanaRepository,
     private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            try {
+                val adminEmail = "admin"
+                val existing = repository.getUserByEmail(adminEmail)
+                if (existing == null) {
+                    val hashedPass = hashPassword("admin123")
+                    val adminUser = User(
+                        email = adminEmail,
+                        name = "Admin Tester",
+                        passwordHash = hashedPass,
+                        createdAt = System.currentTimeMillis()
+                    )
+                    repository.insertUser(adminUser)
+                }
+            } catch (e: java.lang.Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     // Onboarding and Security PIN Preferences
     val isOnboardingCompleted = preferencesRepository.isOnboardingCompleted
@@ -36,24 +57,107 @@ class ManaVahanaViewModel(
     val themeMode = preferencesRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
 
+    val selectedLanguage = preferencesRepository.selectedLanguage
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val overriddenAppVersion = preferencesRepository.overriddenAppVersion
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun updateSimulatedAppVersion(version: String) {
+        viewModelScope.launch {
+            preferencesRepository.saveOverriddenAppVersion(version)
+        }
+    }
+
     // User Session / Offline Profile State Flow
-    val currentUserState = flow {
-        emit(
-            UserProfile(
-                userId = 222,
-                email = "owner@manavahana.local",
-                name = "యజమాని (Owner)"
-            )
-        )
+    val currentUserState = preferencesRepository.jwtToken.map { token ->
+        if (token.isNullOrBlank()) {
+            null
+        } else {
+            JwtHelper.verifyAndParse(token)
+        }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
-        UserProfile(
-            userId = 222,
-            email = "owner@manavahana.local",
-            name = "యజమాని (Owner)"
-        )
+        null
     )
+
+    // JWT Authentication State
+    private val _authState = MutableStateFlow<AuthResult>(AuthResult.Idle)
+    val authState: StateFlow<AuthResult> = _authState.asStateFlow()
+
+    fun resetAuthState() {
+        _authState.value = AuthResult.Idle
+    }
+
+    private fun hashPassword(password: String): String {
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(password.toByteArray(Charsets.UTF_8))
+            hash.fold("") { str, it -> str + "%02x".format(it) }
+        } catch (e: Exception) {
+            password
+        }
+    }
+
+    fun registerUser(username: String, tempPass: String) {
+        viewModelScope.launch {
+            _authState.value = AuthResult.Loading
+            if (username.isBlank() || tempPass.isBlank()) {
+                _authState.value = AuthResult.Error("Username and password are required")
+                return@launch
+            }
+            try {
+                val existing = repository.getUserByEmail(username.trim())
+                if (existing != null) {
+                    _authState.value = AuthResult.Error("Username already registered")
+                    return@launch
+                }
+
+                val hashed = hashPassword(tempPass)
+                val user = User(
+                    email = username.trim(),
+                    name = username.trim(),
+                    passwordHash = hashed,
+                    createdAt = System.currentTimeMillis()
+                )
+                val newId = repository.insertUser(user)
+                val jwt = JwtHelper.generateToken(newId.toInt(), user.email, user.name)
+                preferencesRepository.saveJwtToken(jwt)
+                _authState.value = AuthResult.Success(jwt, "User registered successfully!")
+            } catch (e: Exception) {
+                _authState.value = AuthResult.Error("Registration failed: ${e.message}")
+            }
+        }
+    }
+
+    fun loginUser(username: String, tempPass: String) {
+        viewModelScope.launch {
+            _authState.value = AuthResult.Loading
+            if (username.isBlank() || tempPass.isBlank()) {
+                _authState.value = AuthResult.Error("Username and password are required")
+                return@launch
+            }
+            try {
+                val user = repository.getUserByEmail(username.trim())
+                if (user == null) {
+                    _authState.value = AuthResult.Error("User not found")
+                    return@launch
+                }
+                val hashedInput = hashPassword(tempPass)
+                if (user.passwordHash != hashedInput) {
+                    _authState.value = AuthResult.Error("Invalid password")
+                    return@launch
+                }
+
+                val jwt = JwtHelper.generateToken(user.id, user.email, user.name)
+                preferencesRepository.saveJwtToken(jwt)
+                _authState.value = AuthResult.Success(jwt, "Log In successful!")
+            } catch (e: Exception) {
+                _authState.value = AuthResult.Error("Login failed: ${e.message}")
+            }
+        }
+    }
 
     // Verification state for current session
     private val _isPinVerified = MutableStateFlow(false)
@@ -74,6 +178,9 @@ class ManaVahanaViewModel(
 
     fun logout() {
         _isPinVerified.value = false
+        viewModelScope.launch {
+            preferencesRepository.clearJwtToken()
+        }
     }
 
     fun completeOnboarding(pin: String?) {
@@ -105,6 +212,12 @@ class ManaVahanaViewModel(
     fun setThemeMode(mode: String) {
         viewModelScope.launch {
             preferencesRepository.setThemeMode(mode)
+        }
+    }
+
+    fun selectLanguage(langCode: String) {
+        viewModelScope.launch {
+            preferencesRepository.saveSelectedLanguage(langCode)
         }
     }
 
@@ -855,4 +968,11 @@ class ManaVahanaViewModelFactory(
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
+}
+
+sealed interface AuthResult {
+    object Idle : AuthResult
+    object Loading : AuthResult
+    data class Success(val token: String, val message: String) : AuthResult
+    data class Error(val message: String) : AuthResult
 }

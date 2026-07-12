@@ -1,4 +1,4 @@
-package com.example.data.preferences
+package com.manavahana.data.preferences
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -17,10 +17,43 @@ class UserPreferencesRepository(private val context: Context) {
         private val IS_PIN_LOCK_ENABLED = booleanPreferencesKey("is_pin_lock_enabled")
         private val IS_FINGERPRINT_ENABLED = booleanPreferencesKey("is_fingerprint_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
+        private val JWT_TOKEN = stringPreferencesKey("jwt_token")
+        private val OVERRIDDEN_APP_VERSION = stringPreferencesKey("overridden_app_version")
+    }
+
+    val overriddenAppVersion: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[OVERRIDDEN_APP_VERSION]
+    }
+
+    suspend fun saveOverriddenAppVersion(version: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OVERRIDDEN_APP_VERSION] = version
+        }
+    }
+
+    val jwtToken: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[JWT_TOKEN]
+    }
+
+    suspend fun saveJwtToken(token: String) {
+        context.dataStore.edit { preferences ->
+            preferences[JWT_TOKEN] = token
+        }
+    }
+
+    suspend fun clearJwtToken() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(JWT_TOKEN)
+        }
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[THEME_MODE] ?: "system"
+    }
+
+    val selectedLanguage: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[SELECTED_LANGUAGE]
     }
 
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -68,6 +101,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE] = mode
+        }
+    }
+
+    suspend fun saveSelectedLanguage(lang: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SELECTED_LANGUAGE] = lang
         }
     }
 }

@@ -30,6 +30,36 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Trigger automatic Google Play Store In-App App Update check on startup
+        try {
+            com.example.ui.AppUpdateHelper.getInstance(this).checkForUpdates()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Trigger immediate background reminder & document expiry check on startup
+        try {
+            val reminderWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>().build()
+            androidx.work.WorkManager.getInstance(this).enqueue(reminderWorkRequest)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Request notification permission for Android 13+ (API 33) to allow update alerts on status bar
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                androidx.core.app.ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    1012
+                )
+            }
+        }
+
         val app = application as ManaVahanaApplication
         val repository = app.repository
         val preferencesRepository = app.userPreferencesRepository
