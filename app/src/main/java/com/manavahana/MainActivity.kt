@@ -96,13 +96,13 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(com.manavahana.ui.LocalAppLanguage provides langCode) {
                     val navController = rememberNavController()
 
-                    // Intercept and close the app when the Android back button/gesture is pressed
-                    BackHandler(enabled = true) {
-                        this@MainActivity.finish()
-                    }
-
                     val currentBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = currentBackStackEntry?.destination?.route
+
+                    // Intercept back button on root dashboard screen to finish activity cleanly
+                    BackHandler(enabled = currentRoute == "dashboard" || currentRoute == null) {
+                        this@MainActivity.finish()
+                    }
 
                     val isPinVerified by viewModel.isPinVerified.collectAsState()
                     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
@@ -516,6 +516,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,

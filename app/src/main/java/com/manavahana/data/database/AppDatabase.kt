@@ -67,7 +67,8 @@ abstract class AppDatabase : RoomDatabase() {
                 // In production, we comment out or remove fallbackToDestructiveMigration() and instead specify .addMigrations(...)
                 // fallbackToDestructiveMigration() // -> REMOVED to protect user data from being wiped during updates!
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                .fallbackToDestructiveMigrationOnDowngrade() // Safe: will only clear data if downgrading below current version 
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
                 .build()
                 INSTANCE = instance
                 instance

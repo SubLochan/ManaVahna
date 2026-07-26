@@ -5,17 +5,36 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Preserve line numbers and source file names for crash reporting
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep Application, Activities, and ViewModels
+-keep class com.manavahana.ManaVahanaApplication { *; }
+-keep class com.manavahana.MainActivity { *; }
+-keep class com.manavahana.ui.ManaVahanaViewModel { *; }
+-keep class com.manavahana.ui.ManaVahanaViewModelFactory { *; }
+-keep class com.manavahana.ui.PlayStoreVersionFetcher { *; }
+-keep class com.manavahana.ui.AppUpdateHelper { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep Room Database, Entities, and DAOs
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep class com.manavahana.data.database.** { *; }
+-keep class com.manavahana.data.model.** { *; }
+-keep class com.manavahana.data.dao.** { *; }
+-keep class com.manavahana.data.repository.** { *; }
+-keep class com.manavahana.data.preferences.** { *; }
+
+# Keep WorkManager Workers
+-keep class * extends androidx.work.ListenableWorker { *; }
+-keep class com.manavahana.worker.** { *; }
+
+# Keep Moshi JSON & Serialization classes
+-keepclassmembers class * {
+    @com.squareup.moshi.Json *;
+}
+-keep class com.squareup.moshi.** { *; }
+
+# Keep Google Play In-App Update API
+-keep class com.google.android.play.core.** { *; }
+

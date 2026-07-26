@@ -152,7 +152,12 @@ class ReminderWorker(
         try {
             val packageName = applicationContext.packageName
             val packageInfo = try {
-                applicationContext.packageManager.getPackageInfo(packageName, 0)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    applicationContext.packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    applicationContext.packageManager.getPackageInfo(packageName, 0)
+                }
             } catch (e: Exception) {
                 null
             }

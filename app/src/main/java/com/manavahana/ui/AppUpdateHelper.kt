@@ -111,7 +111,12 @@ class AppUpdateHelper private constructor(private val context: Context) {
             } else {
                 // If not found in Play Store (not published yet), default to current installed version name to avoid false update indications
                 val packageInfo = try {
-                    context.packageManager.getPackageInfo(context.packageName, 0)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        context.packageManager.getPackageInfo(context.packageName, 0)
+                    }
                 } catch (e: Exception) {
                     null
                 }
@@ -129,7 +134,12 @@ class AppUpdateHelper private constructor(private val context: Context) {
             val overriddenApp = app?.userPreferencesRepository?.overriddenAppVersion?.firstOrNull()
 
             val packageInfo = try {
-                context.packageManager.getPackageInfo(context.packageName, 0)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                }
             } catch (e: Exception) {
                 null
             }
