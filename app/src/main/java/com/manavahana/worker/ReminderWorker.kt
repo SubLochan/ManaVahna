@@ -151,10 +151,36 @@ class ReminderWorker(
         // 4. Check for App Updates in Background
         try {
             val packageName = applicationContext.packageName
-            val currentVersionName = applicationContext.packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
-            val latestVersionName = com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName) ?: "1.5"
+            val packageInfo = try {
+                applicationContext.packageManager.getPackageInfo(packageName, 0)
+            } catch (e: Exception) {
+                null
+            }
+            val realInstalledVersionName = packageInfo?.versionName ?: "1.0"
+
+            val rawOverriddenApp = app.userPreferencesRepository.overriddenAppVersion.firstOrNull()
+            val rawOverriddenPlayStore = app.userPreferencesRepository.overriddenPlayStoreVersion.firstOrNull()
+            val latestVersionName = if (!rawOverriddenPlayStore.isNullOrBlank()) {
+                rawOverriddenPlayStore
+            } else {
+                com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName) ?: realInstalledVersionName
+            }
+
+            val currentVersionName = if (!rawOverriddenApp.isNullOrBlank()) {
+                rawOverriddenApp
+            } else if (latestVersionName != realInstalledVersionName) {
+                com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(latestVersionName)
+            } else {
+                realInstalledVersionName
+            }
+
             if (isNewerVersion(currentVersionName, latestVersionName)) {
-                sendUpdateNotification(latestVersionName)
+                val prefs = applicationContext.getSharedPreferences("app_update_prefs", Context.MODE_PRIVATE)
+                val lastNotified = prefs.getString("last_notified_version_name", "")
+                if (lastNotified != latestVersionName) {
+                    sendUpdateNotification(latestVersionName)
+                    prefs.edit().putString("last_notified_version_name", latestVersionName).apply()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

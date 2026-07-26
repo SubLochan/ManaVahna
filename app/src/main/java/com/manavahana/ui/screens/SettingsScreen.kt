@@ -56,6 +56,7 @@ fun SettingsScreen(
     val savedPin by viewModel.savedSecurityPin.collectAsState()
     val selectedLanguage by viewModel.selectedLanguage.collectAsState()
     val overriddenAppVersion by viewModel.overriddenAppVersion.collectAsState()
+    val overriddenPlayStoreVersion by viewModel.overriddenPlayStoreVersion.collectAsState()
     val langCode = selectedLanguage ?: "en"
 
     // Database states gathered for exports
@@ -519,12 +520,22 @@ fun SettingsScreen(
                 packageInfo?.versionCode?.toLong() ?: 1L
             }
 
-            val currentAppVersion = overriddenAppVersion ?: installedVersionName
+            val currentPlayStoreVersion = overriddenPlayStoreVersion ?: livePlayStoreVersion
+            val dynamicCurrentVersion = remember(currentPlayStoreVersion, installedVersionName) {
+                if (currentPlayStoreVersion.isNotEmpty() && 
+                    currentPlayStoreVersion != "Retrieving..." && 
+                    currentPlayStoreVersion != "Not checked yet") {
+                    com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(currentPlayStoreVersion)
+                } else {
+                    installedVersionName
+                }
+            }
+            val currentAppVersion = overriddenAppVersion ?: dynamicCurrentVersion
 
             LaunchedEffect(isEditingVersions) {
                 if (isEditingVersions) {
                     tempCurrentVersion = currentAppVersion
-                    tempPlayStoreVersion = livePlayStoreVersion
+                    tempPlayStoreVersion = currentPlayStoreVersion
                 }
             }
 
@@ -616,7 +627,7 @@ fun SettingsScreen(
                                     Button(
                                         onClick = {
                                             viewModel.updateSimulatedAppVersion(tempCurrentVersion)
-                                            updateHelper.setLivePlayStoreVersion(tempPlayStoreVersion)
+                                            viewModel.updateSimulatedPlayStoreVersion(tempPlayStoreVersion)
                                             isEditingVersions = false
                                         },
                                         modifier = Modifier.weight(1f),
@@ -638,6 +649,7 @@ fun SettingsScreen(
                                     FilledTonalButton(
                                         onClick = {
                                             viewModel.updateSimulatedAppVersion("")
+                                            viewModel.updateSimulatedPlayStoreVersion("")
                                             updateHelper.fetchPlayStoreVersionDirectly()
                                             isEditingVersions = false
                                         },
@@ -688,7 +700,7 @@ fun SettingsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = livePlayStoreVersion,
+                                        text = currentPlayStoreVersion,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant

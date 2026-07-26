@@ -65,9 +65,45 @@ class AppUpdateHelper private constructor(private val context: Context) {
         _livePlayStoreVersion.value = version
     }
 
+    private fun isNewerVersion(current: String, latest: String): Boolean {
+        try {
+            val currParts = current.split(".").mapNotNull { it.toIntOrNull() }
+            val lateParts = latest.split(".").mapNotNull { it.toIntOrNull() }
+            val length = maxOf(currParts.size, lateParts.size)
+            for (i in 0 until length) {
+                val currVal = currParts.getOrNull(i) ?: 0
+                val lateVal = lateParts.getOrNull(i) ?: 0
+                if (lateVal > currVal) return true
+                if (currVal > lateVal) return false
+            }
+        } catch (e: Exception) {
+            return latest != current
+        }
+        return false
+    }
+
+    private fun getPrefs() = context.getSharedPreferences("app_update_prefs", Context.MODE_PRIVATE)
+
+    private fun isAlreadyNotified(versionName: String): Boolean {
+        if (versionName.isEmpty() || versionName == "Not checked yet" || versionName == "Retrieving...") return false
+        return getPrefs().getString("last_notified_version_name", "") == versionName
+    }
+
+    private fun markAsNotified(versionName: String) {
+        if (versionName.isEmpty() || versionName == "Not checked yet" || versionName == "Retrieving...") return
+        getPrefs().edit().putString("last_notified_version_name", versionName).apply()
+    }
+
     fun fetchPlayStoreVersionDirectly() {
         _livePlayStoreVersion.value = "Retrieving..."
         scope.launch {
+            val app = context.applicationContext as? com.manavahana.ManaVahanaApplication
+            val overriddenPlayStore = app?.userPreferencesRepository?.overriddenPlayStoreVersion?.firstOrNull()
+            if (!overriddenPlayStore.isNullOrBlank()) {
+                _livePlayStoreVersion.value = overriddenPlayStore
+                return@launch
+            }
+
             val packageName = context.packageName
             val version = PlayStoreVersionFetcher.fetchVersion(packageName)
             if (version != null) {
@@ -87,36 +123,103 @@ class AppUpdateHelper private constructor(private val context: Context) {
 
     fun checkForUpdates(forceNotification: Boolean = false) {
         _updateStatus.value = UpdateStatus.Checking
-        fetchPlayStoreVersionDirectly()
-        if (appUpdateManager == null) {
-            _updateStatus.value = UpdateStatus.Error("Google Play Services not available")
-            return
-        }
+        scope.launch {
+            val app = context.applicationContext as? com.manavahana.ManaVahanaApplication
+            val overriddenPlayStore = app?.userPreferencesRepository?.overriddenPlayStoreVersion?.firstOrNull()
+            val overriddenApp = app?.userPreferencesRepository?.overriddenAppVersion?.firstOrNull()
 
-        try {
-            val appUpdateInfoTask = appUpdateManager.appUpdateInfo
-            appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
-                if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
-                    val isFlexible = appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
-                    val isImmediate = appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)
-                    val vCode = appUpdateInfo.availableVersionCode()
+            val packageInfo = try {
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            } catch (e: Exception) {
+                null
+            }
+            val installedVersion = packageInfo?.versionName ?: "1.0"
+
+            if (!overriddenPlayStore.isNullOrBlank()) {
+                _livePlayStoreVersion.value = overriddenPlayStore
+                val currentVersion = if (!overriddenApp.isNullOrBlank()) {
+                    overriddenApp
+                } else {
+                    PlayStoreVersionFetcher.getLowerVersion(overriddenPlayStore)
+                }
+
+                if (isNewerVersion(currentVersion, overriddenPlayStore)) {
+                    val vCode = 102
                     _updateStatus.value = UpdateStatus.UpdateAvailable(
                         versionCode = vCode,
-                        isFlexibleAllowed = isFlexible,
-                        isImmediateAllowed = isImmediate,
-                        isSimulation = false,
-                        appUpdateInfo = appUpdateInfo
+                        isFlexibleAllowed = true,
+                        isImmediateAllowed = false,
+                        isSimulation = true,
+                        appUpdateInfo = null
                     )
                     showNotification(vCode, force = forceNotification)
+                    return@launch
                 } else {
                     _updateStatus.value = UpdateStatus.UpToDate
+                    return@launch
                 }
-            }.addOnFailureListener { exception ->
-                Log.w("AppUpdateHelper", "In-app update check failed: ${exception.message}")
-                _updateStatus.value = UpdateStatus.Error(exception.message ?: "Unknown error")
             }
-        } catch (e: Exception) {
-            _updateStatus.value = UpdateStatus.Error(e.message ?: "Unknown error checking updates")
+
+            // Fallback to Scraping Play Store
+            val latestPlayStore = PlayStoreVersionFetcher.fetchVersion(context.packageName)
+            if (latestPlayStore != null) {
+                _livePlayStoreVersion.value = latestPlayStore
+                val currentVersion = if (!overriddenApp.isNullOrBlank()) {
+                    overriddenApp
+                } else {
+                    PlayStoreVersionFetcher.getLowerVersion(latestPlayStore)
+                }
+
+                if (isNewerVersion(currentVersion, latestPlayStore)) {
+                    val vCode = 102
+                    _updateStatus.value = UpdateStatus.UpdateAvailable(
+                        versionCode = vCode,
+                        isFlexibleAllowed = true,
+                        isImmediateAllowed = false,
+                        isSimulation = true,
+                        appUpdateInfo = null
+                    )
+                    showNotification(vCode, force = forceNotification)
+                    return@launch
+                } else {
+                    _updateStatus.value = UpdateStatus.UpToDate
+                    return@launch
+                }
+            }
+
+            val currentVersion = if (!overriddenApp.isNullOrBlank()) overriddenApp else installedVersion
+
+            // Check using real Play Update manager if available
+            if (appUpdateManager == null) {
+                _updateStatus.value = UpdateStatus.Error("Google Play Services not available")
+                return@launch
+            }
+
+            try {
+                val appUpdateInfoTask = appUpdateManager.appUpdateInfo
+                appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
+                    if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
+                        val isFlexible = appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
+                        val isImmediate = appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)
+                        val vCode = appUpdateInfo.availableVersionCode()
+                        _updateStatus.value = UpdateStatus.UpdateAvailable(
+                            versionCode = vCode,
+                            isFlexibleAllowed = isFlexible,
+                            isImmediateAllowed = isImmediate,
+                            isSimulation = false,
+                            appUpdateInfo = appUpdateInfo
+                        )
+                        showNotification(vCode, force = forceNotification)
+                    } else {
+                        _updateStatus.value = UpdateStatus.UpToDate
+                    }
+                }.addOnFailureListener { exception ->
+                    Log.w("AppUpdateHelper", "In-app update check failed: ${exception.message}")
+                    _updateStatus.value = UpdateStatus.Error(exception.message ?: "Unknown error")
+                }
+            } catch (e: Exception) {
+                _updateStatus.value = UpdateStatus.Error(e.message ?: "Unknown error checking updates")
+            }
         }
     }
 
@@ -137,11 +240,17 @@ class AppUpdateHelper private constructor(private val context: Context) {
         _updateStatus.value = UpdateStatus.Idle
         _livePlayStoreVersion.value = "Not checked yet"
         notifiedVersionCode = -1
+        getPrefs().edit().remove("last_notified_version_name").apply()
     }
 
     private fun showNotification(versionCode: Int, force: Boolean = false) {
-        if (!force && notifiedVersionCode == versionCode) {
+        val versionStr = _livePlayStoreVersion.value
+        if (!force && isAlreadyNotified(versionStr)) {
+            Log.d("AppUpdateHelper", "Already notified for version $versionStr, skipping notification.")
             return
+        }
+        if (!force) {
+            markAsNotified(versionStr)
         }
         notifiedVersionCode = versionCode
 

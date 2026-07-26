@@ -19,6 +19,7 @@ class UserPreferencesRepository(private val context: Context) {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
         private val OVERRIDDEN_APP_VERSION = stringPreferencesKey("overridden_app_version")
+        private val OVERRIDDEN_PLAY_STORE_VERSION = stringPreferencesKey("overridden_play_store_version")
         private val BIOMETRIC_PROMPT_SHOWN = booleanPreferencesKey("biometric_prompt_shown")
     }
 
@@ -29,6 +30,16 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun saveOverriddenAppVersion(version: String) {
         context.dataStore.edit { preferences ->
             preferences[OVERRIDDEN_APP_VERSION] = version
+        }
+    }
+
+    val overriddenPlayStoreVersion: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[OVERRIDDEN_PLAY_STORE_VERSION]
+    }
+
+    suspend fun saveOverriddenPlayStoreVersion(version: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OVERRIDDEN_PLAY_STORE_VERSION] = version
         }
     }
 

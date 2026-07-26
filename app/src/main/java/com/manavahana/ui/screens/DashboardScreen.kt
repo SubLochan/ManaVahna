@@ -581,35 +581,27 @@ fun DashboardScreen(
                                             )
                                         }
 
-                                        Box(
-                                            modifier = Modifier
-                                                .size(width = 150.dp, height = 150.dp) // Noticeably INCREASED image size!
-                                                .clip(RoundedCornerShape(14.dp))
-                                                .background(Color.White.copy(alpha = 0.25f))
-                                                .border(1.dp, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            val heroFileExists = if (!pageVeh.vehicleImage.isNullOrBlank() && (pageVeh.vehicleImage.startsWith("file://") || pageVeh.vehicleImage.startsWith("/"))) {
-                                                val file = PathUtils.getResolutionFile(context, pageVeh.vehicleImage)
-                                                file != null && file.exists()
-                                            } else {
-                                                true
-                                            }
+                                        val heroFileExists = if (!pageVeh.vehicleImage.isNullOrBlank() && (pageVeh.vehicleImage.startsWith("file://") || pageVeh.vehicleImage.startsWith("/"))) {
+                                            val file = PathUtils.getResolutionFile(context, pageVeh.vehicleImage)
+                                            file != null && file.exists()
+                                        } else {
+                                            true
+                                        }
 
-                                            if (!pageVeh.vehicleImage.isNullOrBlank() && heroFileExists) {
+                                        if (!pageVeh.vehicleImage.isNullOrBlank() && heroFileExists) {
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 150.dp, height = 150.dp) // Noticeably INCREASED image size!
+                                                    .clip(RoundedCornerShape(14.dp))
+                                                    .background(Color.White.copy(alpha = 0.25f))
+                                                    .border(1.dp, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                                            ) {
                                                 AsyncImage(
                                                     model = PathUtils.getResolutionUriString(context, pageVeh.vehicleImage),
                                                     contentDescription = "Vehicle Image",
                                                     modifier = Modifier.fillMaxSize(),
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                                    error = androidx.compose.ui.graphics.painter.ColorPainter(Color.Black.copy(alpha = 0.1f))
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = getVehicleIcon(pageVeh.vehicleType),
-                                                    contentDescription = null,
-                                                    tint = Color.Black.copy(alpha = 0.5f),
-                                                    modifier = Modifier.size(64.dp)
+                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                                 )
                                             }
                                         }

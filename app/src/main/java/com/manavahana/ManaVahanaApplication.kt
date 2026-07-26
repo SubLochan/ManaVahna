@@ -53,12 +53,12 @@ class ManaVahanaApplication : Application() {
     private fun setupPeriodicReminders() {
         try {
             val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
-                12, TimeUnit.HOURS
+                1, TimeUnit.HOURS
             ).build()
 
             WorkManager.getInstance(this).enqueueUniquePeriodicWork(
                 "manavahana_reminder_work",
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.REPLACE,
                 workRequest
             )
         } catch (e: Exception) {

@@ -1066,8 +1066,7 @@ fun VehicleDetailsScreen(
                                             model = PathUtils.getResolutionUriString(context, activeVehicle.vehicleImage),
                                             contentDescription = "Vehicle Profile Photo",
                                             modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                            error = androidx.compose.ui.graphics.painter.ColorPainter(MaterialTheme.colorScheme.primaryContainer)
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     } else {
                                         Icon(
@@ -1155,35 +1154,26 @@ fun VehicleDetailsScreen(
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        val fileExists = if (!activeVehicle.vehicleImage.isNullOrBlank() && (activeVehicle.vehicleImage.startsWith("file://") || activeVehicle.vehicleImage.startsWith("/"))) {
-                                            val file = PathUtils.getResolutionFile(context, activeVehicle.vehicleImage)
-                                            file != null && file.exists()
-                                        } else {
-                                            true
-                                        }
-
-                                        if (!activeVehicle.vehicleImage.isNullOrBlank() && fileExists) {
+                                    val fileExists = if (!activeVehicle.vehicleImage.isNullOrBlank() && (activeVehicle.vehicleImage.startsWith("file://") || activeVehicle.vehicleImage.startsWith("/"))) {
+                                        val file = PathUtils.getResolutionFile(context, activeVehicle.vehicleImage)
+                                        file != null && file.exists()
+                                    } else {
+                                        true
+                                    }
+                                    if (!activeVehicle.vehicleImage.isNullOrBlank() && fileExists) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(180.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            contentAlignment = Alignment.Center
+                                        ) {
                                             AsyncImage(
                                                 model = PathUtils.getResolutionUriString(context, activeVehicle.vehicleImage),
                                                 contentDescription = "Vehicle Portrait",
                                                 modifier = Modifier.fillMaxSize(),
-                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                                error = androidx.compose.ui.graphics.painter.ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = getVehicleIcon(activeVehicle.vehicleType),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                modifier = Modifier.size(64.dp)
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                             )
                                         }
                                     }

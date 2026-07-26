@@ -45,9 +45,18 @@ class ManaVahanaViewModel(
     val overriddenAppVersion = preferencesRepository.overriddenAppVersion
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val overriddenPlayStoreVersion = preferencesRepository.overriddenPlayStoreVersion
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     fun updateSimulatedAppVersion(version: String) {
         viewModelScope.launch {
             preferencesRepository.saveOverriddenAppVersion(version)
+        }
+    }
+
+    fun updateSimulatedPlayStoreVersion(version: String) {
+        viewModelScope.launch {
+            preferencesRepository.saveOverriddenPlayStoreVersion(version)
         }
     }
 

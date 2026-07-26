@@ -72,4 +72,52 @@ object PlayStoreVersionFetcher {
         }
         null
     }
+
+    /**
+     * Dynamically calculates a version that is exactly one step/number lower than the provided version.
+     * Useful for automatically generating a dynamic current app version that is always behind the Play Store version.
+     */
+    fun getLowerVersion(version: String): String {
+        try {
+            val clean = version.trim()
+            if (clean.isEmpty() || clean == "Retrieving..." || clean == "Not checked yet") {
+                return "1.0"
+            }
+            val parts = clean.split(".").map { it.trim() }
+            if (parts.isNotEmpty()) {
+                val mutableParts = parts.toMutableList()
+                // Find the first integer from the end that is > 0 and decrement it
+                for (i in mutableParts.lastIndex downTo 0) {
+                    val part = mutableParts[i]
+                    val digits = part.takeWhile { it.isDigit() }
+                    if (digits.isNotEmpty()) {
+                        val num = digits.toIntOrNull()
+                        if (num != null && num > 0) {
+                            val newNum = num - 1
+                            val rest = part.substring(digits.length)
+                            mutableParts[i] = "$newNum$rest"
+                            return mutableParts.joinToString(".")
+                        }
+                    }
+                }
+                // Fallback: if all parts are 0 (e.g. "0.0.0"), decrement the last segment regardless
+                val lastPart = mutableParts.lastOrNull()
+                if (lastPart != null) {
+                    val digits = lastPart.takeWhile { it.isDigit() }
+                    if (digits.isNotEmpty()) {
+                        val num = digits.toIntOrNull()
+                        if (num != null) {
+                            val newNum = num - 1
+                            val rest = lastPart.substring(digits.length)
+                            mutableParts[mutableParts.lastIndex] = "$newNum$rest"
+                            return mutableParts.joinToString(".")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+        return "1.0"
+    }
 }
