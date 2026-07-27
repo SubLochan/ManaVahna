@@ -373,7 +373,7 @@ class AppUpdateHelper private constructor(private val context: Context) {
     }
 
     fun openPlayStore(activity: Activity) {
-        val packageName = "com.lochan.ManaVahana"
+        val packageName = activity.packageName
         try {
             android.widget.Toast.makeText(
                 activity,

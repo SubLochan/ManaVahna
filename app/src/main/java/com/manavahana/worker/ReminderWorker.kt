@@ -212,6 +212,16 @@ class ReminderWorker(
     }
 
     private suspend fun sendUpdateNotification(version: String) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+
         val app = applicationContext as? ManaVahanaApplication
         val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()
         val langCode = if (rawLang.isNullOrEmpty()) "en" else rawLang
@@ -253,10 +263,24 @@ class ReminderWorker(
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(7895, notification)
+        try {
+            notificationManager.notify(7895, notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private suspend fun sendNotification(id: Int, title: String, message: String) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+
         val app = applicationContext as? ManaVahanaApplication
         val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()
         val langCode = if (rawLang.isNullOrEmpty()) "en" else rawLang
@@ -284,6 +308,10 @@ class ReminderWorker(
             .build()
 
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(id, notification)
+        try {
+            notificationManager.notify(id, notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

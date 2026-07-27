@@ -25,8 +25,10 @@
 -keep class com.manavahana.data.repository.** { *; }
 -keep class com.manavahana.data.preferences.** { *; }
 
-# Keep WorkManager Workers
--keep class * extends androidx.work.ListenableWorker { *; }
+# Keep WorkManager Workers with constructors for system instantiation
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
 -keep class com.manavahana.worker.** { *; }
 
 # Keep Moshi JSON & Serialization classes
@@ -34,6 +36,11 @@
     @com.squareup.moshi.Json *;
 }
 -keep class com.squareup.moshi.** { *; }
+
+# Keep OkHttp for background version checks
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
 
 # Keep Google Play In-App Update API
 -keep class com.google.android.play.core.** { *; }
