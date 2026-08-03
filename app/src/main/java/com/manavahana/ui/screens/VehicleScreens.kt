@@ -363,49 +363,49 @@ fun DatePickerField(
     context: android.content.Context,
     sdf: SimpleDateFormat
 ) {
-    val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
-    OutlinedTextField(
-        value = sdf.format(Date(timestamp)),
-        onValueChange = {},
-        label = { Text(label) },
-        readOnly = true,
+    val cal = Calendar.getInstance().apply { timeInMillis = if (timestamp > 0) timestamp else System.currentTimeMillis() }
+    val formattedDate = if (timestamp > 0) sdf.format(Date(timestamp)) else "Select Date"
+
+    val showPicker = {
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val selectedCal = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                }
+                onDateSelected(selectedCal.timeInMillis)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        val selectedCal = Calendar.getInstance().apply {
-                            set(Calendar.YEAR, year)
-                            set(Calendar.MONTH, month)
-                            set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                        }
-                        onDateSelected(selectedCal.timeInMillis)
-                    },
-                    cal.get(Calendar.YEAR),
-                    cal.get(Calendar.MONTH),
-                    cal.get(Calendar.DAY_OF_MONTH)
-                ).show()
-            },
-        trailingIcon = {
-            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.clickable {
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        val selectedCal = Calendar.getInstance().apply {
-                            set(Calendar.YEAR, year)
-                            set(Calendar.MONTH, month)
-                            set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                        }
-                        onDateSelected(selectedCal.timeInMillis)
-                    },
-                    cal.get(Calendar.YEAR),
-                    cal.get(Calendar.MONTH),
-                    cal.get(Calendar.DAY_OF_MONTH)
-                ).show()
-            })
-        }
-    )
+            .clickable { showPicker() }
+    ) {
+        OutlinedTextField(
+            value = formattedDate,
+            onValueChange = {},
+            label = { Text(label) },
+            readOnly = true,
+            enabled = false,
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                Icon(Icons.Default.CalendarToday, contentDescription = "Select Date")
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -616,19 +616,21 @@ fun VehicleDetailsScreen(
                             )
                         }
                         item {
-                            val displayNext = if (nextServiceDate > 0) sdf.format(Date(nextServiceDate)) else "Not set"
-                            OutlinedTextField(
-                                value = displayNext,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(getLocalizedText("Next Recall Date", langCode)) },
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    val c = Calendar.getInstance()
-                                    DatePickerDialog(context, { _, y, m, d ->
-                                        val sel = Calendar.getInstance().apply { set(y, m, d) }
-                                        nextServiceDate = sel.timeInMillis
-                                    }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
-                                }
+                            DatePickerField(
+                                label = getLocalizedText("Service Date", langCode),
+                                timestamp = serviceDate,
+                                onDateSelected = { serviceDate = it },
+                                context = context,
+                                sdf = sdf
+                            )
+                        }
+                        item {
+                            DatePickerField(
+                                label = getLocalizedText("Next Recall Date", langCode),
+                                timestamp = nextServiceDate,
+                                onDateSelected = { nextServiceDate = it },
+                                context = context,
+                                sdf = sdf
                             )
                         }
                     }
@@ -720,19 +722,12 @@ fun VehicleDetailsScreen(
                             )
                         }
                         item {
-                            val displayDate = sdf.format(Date(fuelDate))
-                            OutlinedTextField(
-                                value = displayDate,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(getLocalizedText("Date", langCode)) },
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    val c = Calendar.getInstance()
-                                    DatePickerDialog(context, { _, y, m, d ->
-                                        val sel = Calendar.getInstance().apply { set(y, m, d) }
-                                        fuelDate = sel.timeInMillis
-                                    }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
-                                }
+                            DatePickerField(
+                                label = getLocalizedText("Date", langCode),
+                                timestamp = fuelDate,
+                                onDateSelected = { fuelDate = it },
+                                context = context,
+                                sdf = sdf
                             )
                         }
                     }
@@ -820,6 +815,15 @@ fun VehicleDetailsScreen(
                                 onValueChange = { expenseNotes = it },
                                 label = { Text(getLocalizedText("Notes / Description", langCode)) },
                                 modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        item {
+                            DatePickerField(
+                                label = getLocalizedText("Expense Date", langCode),
+                                timestamp = expenseDate,
+                                onDateSelected = { expenseDate = it },
+                                context = context,
+                                sdf = sdf
                             )
                         }
                     }
