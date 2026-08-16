@@ -1,0 +1,437 @@
+Index: app/build.gradle.kts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>plugins {\r\n  alias(libs.plugins.android.application)\r\n  alias(libs.plugins.kotlin.android)\r\n  alias(libs.plugins.kotlin.compose)\r\n  alias(libs.plugins.google.devtools.ksp)\r\n  alias(libs.plugins.roborazzi)\r\n  alias(libs.plugins.secrets)\r\n}\r\n\r\nandroid {\r\n  namespace = \"com.manavahana\"\r\n  compileSdk = 36\r\n  ndkVersion = \"25.1.8937393\"\r\n\r\n  defaultConfig {\r\n    applicationId = \"com.Lochan.ManaVahana\"\r\n    minSdk = 24\r\n    targetSdk = 36\r\n    versionCode = 18\r\n    versionName = \"2.9\"\r\n\r\n    testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"\r\n  }\r\n\r\n  signingConfigs {\r\n    create(\"release\") {\r\n      val keystorePath = System.getenv(\"KEYSTORE_PATH\") ?: \"${rootDir}/ManaVahna_key.jks\"\r\n      storeFile = file(keystorePath)\r\n      storePassword = System.getenv(\"STORE_PASSWORD\")\r\n      keyAlias = \"ManaVahnaKey\"\r\n      keyPassword = System.getenv(\"KEY_PASSWORD\")\r\n    }\r\n    if (file(\"${rootDir}/debug.keystore\").exists()) {\r\n      create(\"debugConfig\") {\r\n        storeFile = file(\"${rootDir}/debug.keystore\")\r\n        storePassword = \"android\"\r\n        keyAlias = \"androiddebugkey\"\r\n        keyPassword = \"android\"\r\n      }\r\n    }\r\n  }\r\n\r\n  buildTypes {\r\n    release {\r\n      isCrunchPngs = false\r\n      isMinifyEnabled = false\r\n      proguardFiles(getDefaultProguardFile(\"proguard-android-optimize.txt\"), \"proguard-rules.pro\")\r\n      signingConfig = signingConfigs.getByName(\"release\")\r\n    }\r\n    debug {\r\n      val customDebugConfig = signingConfigs.findByName(\"debugConfig\")\r\n      if (customDebugConfig != null) {\r\n        signingConfig = customDebugConfig\r\n      }\r\n    }\r\n  }\r\n\r\n  compileOptions {\r\n    sourceCompatibility = JavaVersion.VERSION_17\r\n    targetCompatibility = JavaVersion.VERSION_17\r\n  }\r\n  buildFeatures {\r\n    compose = true\r\n    buildConfig = true\r\n  }\r\n  testOptions { unitTests { isIncludeAndroidResources = true } }\r\n}\r\n\r\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {\r\n  compilerOptions {\r\n    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)\r\n  }\r\n}\r\n\r\n// Configure the Secrets Gradle Plugin to use .env and .env.example files\r\n// to match the convention used in Web projects.\r\nsecrets {\r\n  propertiesFileName = \".env\"\r\n  defaultPropertiesFileName = \".env.example\"\r\n}\r\n\r\n// Some unused dependencies are commented out below instead of being removed.\r\n// This makes it easy to add them back in the future if needed.\r\ndependencies {\r\n  implementation(platform(libs.androidx.compose.bom))\r\n  implementation(platform(libs.firebase.bom))\r\n  // implementation(libs.accompanist.permissions)\r\n  implementation(libs.androidx.activity.compose)\r\n  // implementation(libs.androidx.camera.camera2)\r\n  // implementation(libs.androidx.camera.core)\r\n  // implementation(libs.androidx.camera.lifecycle)\r\n  // implementation(libs.androidx.camera.view)\r\n  implementation(libs.androidx.compose.material.icons.core)\r\n  implementation(libs.androidx.compose.material.icons.extended)\r\n  implementation(libs.androidx.compose.material3)\r\n  implementation(libs.androidx.compose.ui)\r\n  implementation(libs.androidx.compose.ui.graphics)\r\n  implementation(libs.androidx.compose.ui.tooling.preview)\r\n  implementation(libs.androidx.core.ktx)\r\n  implementation(libs.androidx.datastore.preferences)\r\n  implementation(libs.androidx.lifecycle.runtime.compose)\r\n  implementation(libs.androidx.lifecycle.runtime.ktx)\r\n  implementation(libs.androidx.lifecycle.viewmodel.compose)\r\n  implementation(libs.androidx.navigation.compose)\r\n  implementation(libs.androidx.room.ktx)\r\n  implementation(libs.androidx.room.runtime)\r\n  implementation(libs.coil.compose)\r\n  implementation(\"androidx.work:work-runtime-ktx:2.9.0\")\r\n  implementation(libs.converter.moshi)\r\n  // implementation(libs.firebase.ai)\r\n  implementation(libs.kotlinx.coroutines.android)\r\n  implementation(libs.kotlinx.coroutines.core)\r\n  implementation(libs.logging.interceptor)\r\n  implementation(libs.moshi.kotlin)\r\n  implementation(libs.okhttp)\r\n  // implementation(libs.play.services.location)\r\n  implementation(libs.retrofit)\r\n  implementation(libs.play.app.update)\r\n  implementation(libs.play.app.update.ktx)\r\n  testImplementation(libs.androidx.compose.ui.test.junit4)\r\n  testImplementation(libs.androidx.core)\r\n  testImplementation(libs.androidx.junit)\r\n  testImplementation(libs.junit)\r\n  testImplementation(libs.kotlinx.coroutines.test)\r\n  testImplementation(libs.robolectric)\r\n  testImplementation(libs.roborazzi)\r\n  testImplementation(libs.roborazzi.compose)\r\n  testImplementation(libs.roborazzi.junit.rule)\r\n  androidTestImplementation(platform(libs.androidx.compose.bom))\r\n  androidTestImplementation(libs.androidx.compose.ui.test.junit4)\r\n  androidTestImplementation(libs.androidx.espresso.core)\r\n  androidTestImplementation(libs.androidx.junit)\r\n  androidTestImplementation(libs.androidx.runner)\r\n  debugImplementation(libs.androidx.compose.ui.test.manifest)\r\n  debugImplementation(libs.androidx.compose.ui.tooling)\r\n  \"ksp\"(libs.androidx.room.compiler)\r\n  \"ksp\"(libs.moshi.kotlin.codegen)\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts	(revision c6a315fc37f7ea961ac4adbc6f969813304161bc)
++++ b/app/build.gradle.kts	(date 1786857137747)
+@@ -16,8 +16,8 @@
+     applicationId = "com.Lochan.ManaVahana"
+     minSdk = 24
+     targetSdk = 36
+-    versionCode = 18
+-    versionName = "2.9"
++    versionCode = 21
++    versionName = "2.9.4"
+ 
+     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+   }
+@@ -97,6 +97,7 @@
+   implementation(libs.androidx.compose.ui.graphics)
+   implementation(libs.androidx.compose.ui.tooling.preview)
+   implementation(libs.androidx.core.ktx)
++  implementation(libs.androidx.fragment.ktx)
+   implementation(libs.androidx.datastore.preferences)
+   implementation(libs.androidx.lifecycle.runtime.compose)
+   implementation(libs.androidx.lifecycle.runtime.ktx)
+Index: app/src/main/java/com/manavahana/MainActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.manavahana\r\n\r\nimport android.os.Bundle\r\nimport androidx.activity.ComponentActivity\r\nimport androidx.activity.compose.setContent\r\nimport androidx.activity.compose.BackHandler\r\nimport androidx.activity.enableEdgeToEdge\r\nimport androidx.compose.foundation.isSystemInDarkTheme\r\nimport androidx.compose.foundation.layout.fillMaxSize\r\nimport androidx.compose.foundation.layout.padding\r\nimport androidx.compose.material.icons.Icons\r\nimport androidx.compose.material.icons.filled.*\r\nimport androidx.compose.material3.*\r\nimport androidx.compose.runtime.*\r\nimport androidx.compose.ui.Modifier\r\nimport androidx.compose.ui.graphics.vector.ImageVector\r\nimport androidx.compose.ui.platform.testTag\r\nimport androidx.compose.foundation.background\r\nimport androidx.compose.foundation.border\r\nimport androidx.compose.foundation.clickable\r\nimport androidx.compose.foundation.layout.*\r\nimport androidx.compose.foundation.shape.CircleShape\r\nimport androidx.compose.foundation.shape.RoundedCornerShape\r\nimport androidx.compose.ui.draw.clip\r\nimport androidx.compose.ui.graphics.Color\r\nimport androidx.compose.ui.unit.dp\r\nimport androidx.compose.ui.unit.sp\r\nimport androidx.compose.ui.Alignment\r\nimport androidx.compose.ui.text.font.FontWeight\r\nimport androidx.compose.foundation.BorderStroke\r\nimport androidx.compose.ui.window.Dialog\r\nimport androidx.lifecycle.ViewModelProvider\r\nimport androidx.navigation.NamedNavArgument\r\nimport androidx.navigation.NavType\r\nimport androidx.navigation.compose.*\r\nimport androidx.navigation.navArgument\r\nimport com.manavahana.ui.ManaVahanaViewModel\r\nimport com.manavahana.ui.ManaVahanaViewModelFactory\r\nimport com.manavahana.ui.screens.*\r\nimport com.manavahana.ui.theme.ManaVahanaTheme\r\n\r\nclass MainActivity : ComponentActivity() {\r\n\r\n    override fun onCreate(savedInstanceState: Bundle?) {\r\n        super.onCreate(savedInstanceState)\r\n        enableEdgeToEdge()\r\n\r\n        // Trigger automatic Google Play Store In-App App Update check on startup\r\n        try {\r\n            com.manavahana.ui.AppUpdateHelper.getInstance(this).checkForUpdates()\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n        }\r\n\r\n        // Trigger immediate background reminder & document expiry check on startup\r\n        try {\r\n            val reminderWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.manavahana.worker.ReminderWorker>().build()\r\n            androidx.work.WorkManager.getInstance(this).enqueue(reminderWorkRequest)\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n        }\r\n\r\n        // Request notification permission for Android 13+ (API 33) to allow update alerts on status bar\r\n        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {\r\n            if (androidx.core.content.ContextCompat.checkSelfPermission(\r\n                    this,\r\n                    android.Manifest.permission.POST_NOTIFICATIONS\r\n                ) != android.content.pm.PackageManager.PERMISSION_GRANTED\r\n            ) {\r\n                androidx.core.app.ActivityCompat.requestPermissions(\r\n                    this,\r\n                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),\r\n                    1012\r\n                )\r\n            }\r\n        }\r\n\r\n        val app = application as ManaVahanaApplication\r\n        val repository = app.repository\r\n        val preferencesRepository = app.userPreferencesRepository\r\n\r\n        val factory = ManaVahanaViewModelFactory(repository, preferencesRepository)\r\n        val viewModel = ViewModelProvider(this, factory)[ManaVahanaViewModel::class.java]\r\n\r\n        setContent {\r\n            val themeMode by viewModel.themeMode.collectAsState()\r\n            val isDarkTheme = when (themeMode) {\r\n                \"light\" -> false\r\n                \"dark\" -> true\r\n                else -> isSystemInDarkTheme()\r\n            }\r\n            ManaVahanaTheme(themeMode = themeMode, darkTheme = isDarkTheme) {\r\n                val selectedLanguage by viewModel.selectedLanguage.collectAsState()\r\n                val langCode = selectedLanguage ?: \"en\"\r\n\r\n                CompositionLocalProvider(com.manavahana.ui.LocalAppLanguage provides langCode) {\r\n                    val navController = rememberNavController()\r\n\r\n                    val currentBackStackEntry by navController.currentBackStackEntryAsState()\r\n                    val currentRoute = currentBackStackEntry?.destination?.route\r\n\r\n                    val isPinVerified by viewModel.isPinVerified.collectAsState()\r\n                    val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()\r\n\r\n                    // List of destinations that require the Bottom Navigation Bar\r\n                    val bottomNavDestinations = listOf(\r\n                        \"dashboard\",\r\n                        \"fuel_logs\",\r\n                        \"service_logs\",\r\n                        \"expenses\",\r\n                        \"document_vault\",\r\n                        \"settings\"\r\n                    )\r\n\r\n                    var showQuickActions by remember { mutableStateOf(false) }\r\n\r\n                    // Handle Android system back press: close quick actions if open, otherwise finish activity to close app\r\n                    BackHandler(enabled = true) {\r\n                        if (showQuickActions) {\r\n                            showQuickActions = false\r\n                        } else {\r\n                            this@MainActivity.finish()\r\n                        }\r\n                    }\r\n                    val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled)\r\n\r\n                    Scaffold(\r\n                        modifier = Modifier.fillMaxSize(),\r\n                        containerColor = MaterialTheme.colorScheme.background,\r\n                        bottomBar = {\r\n                            if (showBottomBar) {\r\n                                Box(\r\n                                    modifier = Modifier\r\n                                        .fillMaxWidth()\r\n                                        .navigationBarsPadding()\r\n                                        .testTag(\"app_navigator\")\r\n                                ) {\r\n                                    // Bottom Navigation bar capsule\r\n                                    Surface(\r\n                                        modifier = Modifier\r\n                                            .fillMaxWidth()\r\n                                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)\r\n                                            .height(72.dp)\r\n                                            .align(Alignment.BottomCenter),\r\n                                        shape = RoundedCornerShape(percent = 50),\r\n                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),\r\n                                        tonalElevation = 8.dp,\r\n                                        shadowElevation = 12.dp\r\n                                    ) {\r\n                                        val leftItems = listOf(\r\n                                            BottomNavItem(com.manavahana.ui.Localizer.get(\"nav_dashboard\", langCode), \"dashboard\", Icons.Default.Dashboard),\r\n                                            BottomNavItem(com.manavahana.ui.Localizer.get(\"nav_services\", langCode), \"service_logs\", Icons.Default.Build)\r\n                                        )\r\n                                        val rightItems = listOf(\r\n                                            BottomNavItem(com.manavahana.ui.Localizer.get(\"nav_vault\", langCode), \"document_vault\", Icons.Default.FolderZip),\r\n                                            BottomNavItem(com.manavahana.ui.Localizer.get(\"nav_settings\", langCode), \"settings\", Icons.Default.Settings)\r\n                                        )\r\n\r\n                                        Row(\r\n                                            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),\r\n                                            horizontalArrangement = Arrangement.SpaceBetween,\r\n                                            verticalAlignment = Alignment.CenterVertically\r\n                                        ) {\r\n                                            // Left side items\r\n                                            Row(\r\n                                                modifier = Modifier.weight(1f),\r\n                                                horizontalArrangement = Arrangement.SpaceEvenly\r\n                                            ) {\r\n                                                leftItems.forEach { item ->\r\n                                                    val isSelected = currentRoute == item.route\r\n                                                    Box(\r\n                                                        modifier = Modifier\r\n                                                            .clip(RoundedCornerShape(24.dp))\r\n                                                            .clickable {\r\n                                                                if (currentRoute != item.route) {\r\n                                                                    navController.navigate(item.route) {\r\n                                                                        popUpTo(0) { inclusive = true }\r\n                                                                        launchSingleTop = true\r\n                                                                    }\r\n                                                                }\r\n                                                            }\r\n                                                            .padding(10.dp)\r\n                                                            .testTag(\"nav_item_${item.route}\"),\r\n                                                        contentAlignment = Alignment.Center\r\n                                                    ) {\r\n                                                        Icon(\r\n                                                            imageVector = item.icon,\r\n                                                            contentDescription = item.label,\r\n                                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),\r\n                                                            modifier = Modifier.size(30.dp)\r\n                                                        )\r\n                                                    }\r\n                                                }\r\n                                            }\r\n\r\n                                            // FAB spacer\r\n                                            Spacer(modifier = Modifier.width(76.dp))\r\n\r\n                                            // Right side items\r\n                                            Row(\r\n                                                modifier = Modifier.weight(1f),\r\n                                                horizontalArrangement = Arrangement.SpaceEvenly\r\n                                            ) {\r\n                                                rightItems.forEach { item ->\r\n                                                    val isSelected = currentRoute == item.route\r\n                                                    Box(\r\n                                                        modifier = Modifier\r\n                                                            .clip(RoundedCornerShape(24.dp))\r\n                                                            .clickable {\r\n                                                                if (currentRoute != item.route) {\r\n                                                                    navController.navigate(item.route) {\r\n                                                                        popUpTo(0) { inclusive = true }\r\n                                                                        launchSingleTop = true\r\n                                                                    }\r\n                                                                }\r\n                                                            }\r\n                                                            .padding(10.dp)\r\n                                                            .testTag(\"nav_item_${item.route}\"),\r\n                                                        contentAlignment = Alignment.Center\r\n                                                    ) {\r\n                                                        Icon(\r\n                                                            imageVector = item.icon,\r\n                                                            contentDescription = item.label,\r\n                                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),\r\n                                                            modifier = Modifier.size(30.dp)\r\n                                                        )\r\n                                                    }\r\n                                                }\r\n                                            }\r\n                                        }\r\n                                    }\r\n\r\n                                    // Centered Overlay Floating Action Button\r\n                                    FloatingActionButton(\r\n                                        onClick = { showQuickActions = true },\r\n                                        modifier = Modifier\r\n                                            .align(Alignment.TopCenter)\r\n                                            .offset(y = (-20).dp)\r\n                                            .size(54.dp)\r\n                                            .testTag(\"center_floating_fab\"),\r\n                                        shape = CircleShape,\r\n                                        containerColor = Color(0xFFFFA000), // custom warning golden exactly like screenshot\r\n                                        contentColor = Color.Black,\r\n                                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)\r\n                                    ) {\r\n                                        Icon(\r\n                                            imageVector = Icons.Default.DirectionsCar,\r\n                                            contentDescription = \"Quick Action Car Menu\",\r\n                                            modifier = Modifier.size(24.dp)\r\n                                        )\r\n                                    }\r\n                                }\r\n                            }\r\n                        }\r\n                    ) { innerPadding ->\r\n                        if (showQuickActions) {\r\n                            Dialog(onDismissRequest = { showQuickActions = false }) {\r\n                                Card(\r\n                                    modifier = Modifier\r\n                                        .fillMaxWidth()\r\n                                        .padding(16.dp),\r\n                                    shape = RoundedCornerShape(24.dp),\r\n                                    colors = CardDefaults.cardColors(\r\n                                        containerColor = MaterialTheme.colorScheme.surface\r\n                                    ),\r\n                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))\r\n                                ) {\r\n                                    Column(\r\n                                        modifier = Modifier\r\n                                            .fillMaxWidth()\r\n                                            .padding(20.dp),\r\n                                        horizontalAlignment = Alignment.CenterHorizontally,\r\n                                        verticalArrangement = Arrangement.spacedBy(16.dp)\r\n                                    ) {\r\n                                        androidx.compose.material3.Text(\r\n                                            text = if (langCode == \"te\") \"వాహన త్వరిత చర్యలు\" else if (langCode == \"hi\") \"वाहन त्वरित कार्रवाई\" else \"Vehicle Quick Actions\",\r\n                                            fontWeight = FontWeight.ExtraBold,\r\n                                            fontSize = 18.sp,\r\n                                            color = MaterialTheme.colorScheme.primary\r\n                                        )\r\n\r\n                                        val actionsList = listOf(\r\n                                            QuickActionOption(\r\n                                                label = if (langCode == \"te\") \"వాహనం జోడించు\" else if (langCode == \"hi\") \"वाहन शामिल करें\" else \"Add Vehicle\",\r\n                                                description = if (langCode == \"te\") \"మైలేజీ మరియు సర్వీస్ నిర్వహణ కోసం కొత్త వాహనం జోడించండి\" else if (langCode == \"hi\") \"माइलेज और सर्विस प्रबंधन के लिए नया वाहन जोड़ें\" else \"Add a new vehicle to track services and mileage\",\r\n                                                route = \"add_vehicle\",\r\n                                                icon = Icons.Default.DirectionsCar\r\n                                            ),\r\n                                            QuickActionOption(\r\n                                                label = if (langCode == \"te\") \"సర్వీస్ రికార్డ్ జోడించు\" else if (langCode == \"hi\") \"सेवा रिकॉर्ड शामिल करें\" else \"Add Service Record\",\r\n                                                description = if (langCode == \"te\") \"రిపేర్లు, ఇంజిన్ ఆయిల్ మార్పు లేదా మెయింటెనెన్స్ రికార్డ్\u200Cలను నమోదు చేయండి\" else if (langCode == \"hi\") \"मरम्मत, इंजन तेल परिवर्तन या रखरखाव रिकॉर्ड दर्ज करें\" else \"Log repairs, engine oil change, or periodic maintenance\",\r\n                                                route = \"service_logs\",\r\n                                                icon = Icons.Default.Build\r\n                                            ),\r\n                                            QuickActionOption(\r\n                                                label = if (langCode == \"te\") \"ఇంధనం పూరించండి\" else if (langCode == \"hi\") \"ईंधन भरें\" else \"Fill Fuel\",\r\n                                                description = if (langCode == \"te\") \"మైలేజ్ విశ్లేషించడానికి ఇంధన పరిమాణం మరియు ధర రికార్డ్ చేయండి\" else if (langCode == \"hi\") \"माइलेज का विश्लेषण करने के लिए ईंधन की मात्रा और लागत दर्ज करें\" else \"Log fuel details, cost, and odometer reading to track mileage\",\r\n                                                route = \"fuel_logs\",\r\n                                                icon = Icons.Default.LocalGasStation\r\n                                            ),\r\n                                            QuickActionOption(\r\n                                                label = if (langCode == \"te\") \"డాక్యుమెంట్ వాల్ట్\" else if (langCode == \"hi\") \"दस्तावेज़ तिजोरी\" else \"Document Vault\",\r\n                                                description = if (langCode == \"te\") \"RC, ఇన్సూరెన్స్ యొక్క డిజిటల్ కాపీలను భద్రపరచండి\" else if (langCode == \"hi\") \"आरसी, बीमा की डिजिटल प्रतियां सुरक्षित रखें\" else \"Securely store document copies & expiry alerts\",\r\n                                                route = \"document_vault\",\r\n                                                icon = Icons.Default.FolderZip\r\n                                            )\r\n                                        )\r\n\r\n                                        Column(\r\n                                            modifier = Modifier.fillMaxWidth(),\r\n                                            verticalArrangement = Arrangement.spacedBy(8.dp)\r\n                                        ) {\r\n                                            actionsList.forEach { action ->\r\n                                                Row(\r\n                                                    modifier = Modifier\r\n                                                        .fillMaxWidth()\r\n                                                        .clip(RoundedCornerShape(14.dp))\r\n                                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))\r\n                                                        .clickable {\r\n                                                            showQuickActions = false\r\n                                                            navController.navigate(action.route) {\r\n                                                                popUpTo(0) { inclusive = true }\r\n                                                                launchSingleTop = true\r\n                                                            }\r\n                                                        }\r\n                                                        .padding(14.dp),\r\n                                                    verticalAlignment = Alignment.CenterVertically,\r\n                                                    horizontalArrangement = Arrangement.spacedBy(12.dp)\r\n                                                ) {\r\n                                                    Box(\r\n                                                        modifier = Modifier\r\n                                                            .size(36.dp)\r\n                                                            .clip(CircleShape)\r\n                                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),\r\n                                                        contentAlignment = Alignment.Center\r\n                                                    ) {\r\n                                                        Icon(\r\n                                                            imageVector = action.icon,\r\n                                                            contentDescription = action.label,\r\n                                                            tint = MaterialTheme.colorScheme.primary,\r\n                                                            modifier = Modifier.size(18.dp)\r\n                                                        )\r\n                                                    }\r\n\r\n                                                    Column(\r\n                                                        modifier = Modifier.weight(1f)\r\n                                                    ) {\r\n                                                        androidx.compose.material3.Text(\r\n                                                            text = action.label,\r\n                                                            fontWeight = FontWeight.Bold,\r\n                                                            fontSize = 13.sp,\r\n                                                            color = MaterialTheme.colorScheme.onSurface\r\n                                                        )\r\n                                                        Spacer(modifier = Modifier.height(2.dp))\r\n                                                        androidx.compose.material3.Text(\r\n                                                            text = action.description,\r\n                                                            fontSize = 10.5.sp,\r\n                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)\r\n                                                        )\r\n                                                    }\r\n                                                }\r\n                                            }\r\n                                        }\r\n\r\n                                        TextButton(\r\n                                            onClick = { showQuickActions = false },\r\n                                            modifier = Modifier.align(Alignment.End)\r\n                                        ) {\r\n                                            androidx.compose.material3.Text(\r\n                                                text = if (langCode == \"te\") \"మూసివేయి\" else if (langCode == \"hi\") \"बंद करें\" else \"Close\",\r\n                                                fontWeight = FontWeight.Bold\r\n                                            )\r\n                                        }\r\n                                    }\r\n                                }\r\n                            }\r\n                        }\r\n                        NavHost(\r\n                            navController = navController,\r\n                            startDestination = \"splash\",\r\n                            modifier = Modifier.padding(innerPadding)\r\n                        ) {\r\n                            composable(\"splash\") {\r\n                                SplashScreen(\r\n                                    viewModel = viewModel,\r\n                                    onNavigateToLanguageSelection = {\r\n                                        navController.navigate(\"language_selection\") {\r\n                                            popUpTo(\"splash\") { inclusive = true }\r\n                                        }\r\n                                    },\r\n                                    onNavigateToOnboarding = {\r\n                                        navController.navigate(\"onboarding\") {\r\n                                            popUpTo(\"splash\") { inclusive = true }\r\n                                        }\r\n                                    },\r\n                                    onNavigateToLogin = {\r\n                                        navController.navigate(\"login\") {\r\n                                            popUpTo(\"splash\") { inclusive = true }\r\n                                        }\r\n                                    },\r\n                                    onNavigateToDashboard = {\r\n                                        navController.navigate(\"dashboard\") {\r\n                                            popUpTo(\"splash\") { inclusive = true }\r\n                                        }\r\n                                    }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"language_selection\") {\r\n                                LanguageSelectionScreen(\r\n                                    viewModel = viewModel,\r\n                                    onLangSelected = {\r\n                                        val isOnboarded = viewModel.isOnboardingCompleted.value\r\n                                        val isPinEnabled = viewModel.isPinLockEnabled.value\r\n                                        if (!isOnboarded) {\r\n                                            navController.navigate(\"onboarding\") {\r\n                                                popUpTo(\"language_selection\") { inclusive = true }\r\n                                            }\r\n                                        } else if (isPinEnabled) {\r\n                                            navController.navigate(\"login\") {\r\n                                                popUpTo(\"language_selection\") { inclusive = true }\r\n                                            }\r\n                                        } else {\r\n                                            viewModel.bypassPinVerification()\r\n                                            navController.navigate(\"dashboard\") {\r\n                                                popUpTo(\"language_selection\") { inclusive = true }\r\n                                            }\r\n                                        }\r\n                                    }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"onboarding\") {\r\n                                OnboardingScreen(\r\n                                    viewModel = viewModel,\r\n                                    onComplete = {\r\n                                        navController.navigate(\"dashboard\") {\r\n                                            popUpTo(\"onboarding\") { inclusive = true }\r\n                                        }\r\n                                    }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"login\") {\r\n                                PinLockScreen(\r\n                                    viewModel = viewModel,\r\n                                    onSuccess = {\r\n                                        navController.navigate(\"dashboard\") {\r\n                                            popUpTo(\"login\") { inclusive = true }\r\n                                        }\r\n                                    }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"dashboard\") {\r\n                                DashboardScreen(\r\n                                    viewModel = viewModel,\r\n                                    onNavigateToAddVehicle = {\r\n                                        navController.navigate(\"add_vehicle\") {\r\n                                            popUpTo(0) { inclusive = true }\r\n                                            launchSingleTop = true\r\n                                        }\r\n                                    },\r\n                                    onNavigateToVehicleDetails = { id ->\r\n                                        navController.navigate(\"vehicle_details/$id\") {\r\n                                            popUpTo(0) { inclusive = true }\r\n                                            launchSingleTop = true\r\n                                        }\r\n                                    },\r\n                                    onNavigateToAddExpense = {\r\n                                        navController.navigate(\"expenses\") {\r\n                                            popUpTo(0) { inclusive = true }\r\n                                            launchSingleTop = true\r\n                                        }\r\n                                    },\r\n                                    onNavigateToAddService = {\r\n                                        navController.navigate(\"service_logs\") {\r\n                                            popUpTo(0) { inclusive = true }\r\n                                            launchSingleTop = true\r\n                                        }\r\n                                    },\r\n                                    onNavigateToAddFuel = {\r\n                                        navController.navigate(\"fuel_logs\") {\r\n                                            popUpTo(0) { inclusive = true }\r\n                                            launchSingleTop = true\r\n                                        }\r\n                                    },\r\n                                    onNavigateToVault = {\r\n                                        navController.navigate(\"document_vault\") {\r\n                                            popUpTo(0) { inclusive = true }\r\n                                            launchSingleTop = true\r\n                                        }\r\n                                    }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"add_vehicle\") {\r\n                                AddVehicleScreen(\r\n                                    viewModel = viewModel,\r\n                                    onNavigateBack = { this@MainActivity.finish() }\r\n                                )\r\n                            }\r\n\r\n                            composable(\r\n                                route = \"vehicle_details/{vehicleId}\",\r\n                                arguments = listOf(navArgument(\"vehicleId\") { type = NavType.IntType })\r\n                            ) { backStackEntry ->\r\n                                val vehicleId = backStackEntry.arguments?.getInt(\"vehicleId\") ?: 0\r\n                                VehicleDetailsScreen(\r\n                                    viewModel = viewModel,\r\n                                    vehicleId = vehicleId,\r\n                                    onNavigateBack = { this@MainActivity.finish() }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"service_logs\") {\r\n                                ServiceLogsScreen(\r\n                                    viewModel = viewModel,\r\n                                    onNavigateBack = { this@MainActivity.finish() }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"fuel_logs\") {\r\n                                FuelLogsScreen(\r\n                                    viewModel = viewModel,\r\n                                    onNavigateBack = { this@MainActivity.finish() }\r\n                                )\r\n                            }\r\n\r\n                            composable(\"expenses\") {\r\n                                ExpensesScreen(\r\n                                    viewModel = viewModel\r\n                                )\r\n                            }\r\n\r\n                            composable(\"document_vault\") {\r\n                                DocumentVaultScreen(\r\n                                    viewModel = viewModel\r\n                                )\r\n                            }\r\n\r\n                            composable(\"settings\") {\r\n                                SettingsScreen(\r\n                                    viewModel = viewModel\r\n                                )\r\n                            }\r\n                        }\r\n                    }\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    @Suppress(\"DEPRECATION\", \"OVERRIDE_DEPRECATION\")\r\n    override fun onRequestPermissionsResult(\r\n        requestCode: Int,\r\n        permissions: Array<out String>,\r\n        grantResults: IntArray\r\n    ) {\r\n        super.onRequestPermissionsResult(requestCode, permissions, grantResults)\r\n        if (requestCode == 1012) {\r\n            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {\r\n                try {\r\n                    com.manavahana.ui.AppUpdateHelper.getInstance(this).checkForUpdates()\r\n                } catch (e: Exception) {\r\n                    e.printStackTrace()\r\n                }\r\n            }\r\n        }\r\n    }\r\n}\r\n\r\ndata class BottomNavItem(\r\n    val label: String,\r\n    val route: String,\r\n    val icon: ImageVector\r\n)\r\n\r\ndata class QuickActionOption(\r\n    val label: String,\r\n    val description: String,\r\n    val route: String,\r\n    val icon: ImageVector\r\n)\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/manavahana/MainActivity.kt b/app/src/main/java/com/manavahana/MainActivity.kt
+--- a/app/src/main/java/com/manavahana/MainActivity.kt	(revision c6a315fc37f7ea961ac4adbc6f969813304161bc)
++++ b/app/src/main/java/com/manavahana/MainActivity.kt	(date 1785942834842)
+@@ -114,12 +114,16 @@
+ 
+                     var showQuickActions by remember { mutableStateOf(false) }
+ 
+-                    // Handle Android system back press: close quick actions if open, otherwise finish activity to close app
++                    // Handle Android system back press: close quick actions if open, navigate back if in subscreen, otherwise finish activity on dashboard/splash/login
+                     BackHandler(enabled = true) {
+                         if (showQuickActions) {
+                             showQuickActions = false
++                        } else if (currentRoute == "dashboard" || currentRoute == "splash" || currentRoute == "login" || currentRoute == "language_selection" || currentRoute == "onboarding") {
++                            this@MainActivity.finish()
+                         } else {
+-                            this@MainActivity.finish()
++                            if (!navController.popBackStack()) {
++                                this@MainActivity.finish()
++                            }
+                         }
+                     }
+                     val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled)
+@@ -174,8 +178,9 @@
+                                                             .clickable {
+                                                                 if (currentRoute != item.route) {
+                                                                     navController.navigate(item.route) {
+-                                                                        popUpTo(0) { inclusive = true }
++                                                                        popUpTo("dashboard") { saveState = true }
+                                                                         launchSingleTop = true
++                                                                        restoreState = true
+                                                                     }
+                                                                 }
+                                                             }
+@@ -209,8 +214,9 @@
+                                                             .clickable {
+                                                                 if (currentRoute != item.route) {
+                                                                     navController.navigate(item.route) {
+-                                                                        popUpTo(0) { inclusive = true }
++                                                                        popUpTo("dashboard") { saveState = true }
+                                                                         launchSingleTop = true
++                                                                        restoreState = true
+                                                                     }
+                                                                 }
+                                                             }
+@@ -319,7 +325,6 @@
+                                                         .clickable {
+                                                             showQuickActions = false
+                                                             navController.navigate(action.route) {
+-                                                                popUpTo(0) { inclusive = true }
+                                                                 launchSingleTop = true
+                                                             }
+                                                         }
+@@ -455,49 +460,19 @@
+                             composable("dashboard") {
+                                 DashboardScreen(
+                                     viewModel = viewModel,
+-                                    onNavigateToAddVehicle = {
+-                                        navController.navigate("add_vehicle") {
+-                                            popUpTo(0) { inclusive = true }
+-                                            launchSingleTop = true
+-                                        }
+-                                    },
+-                                    onNavigateToVehicleDetails = { id ->
+-                                        navController.navigate("vehicle_details/$id") {
+-                                            popUpTo(0) { inclusive = true }
+-                                            launchSingleTop = true
+-                                        }
+-                                    },
+-                                    onNavigateToAddExpense = {
+-                                        navController.navigate("expenses") {
+-                                            popUpTo(0) { inclusive = true }
+-                                            launchSingleTop = true
+-                                        }
+-                                    },
+-                                    onNavigateToAddService = {
+-                                        navController.navigate("service_logs") {
+-                                            popUpTo(0) { inclusive = true }
+-                                            launchSingleTop = true
+-                                        }
+-                                    },
+-                                    onNavigateToAddFuel = {
+-                                        navController.navigate("fuel_logs") {
+-                                            popUpTo(0) { inclusive = true }
+-                                            launchSingleTop = true
+-                                        }
+-                                    },
+-                                    onNavigateToVault = {
+-                                        navController.navigate("document_vault") {
+-                                            popUpTo(0) { inclusive = true }
+-                                            launchSingleTop = true
+-                                        }
+-                                    }
++                                    onNavigateToAddVehicle = { navController.navigate("add_vehicle") },
++                                    onNavigateToVehicleDetails = { id -> navController.navigate("vehicle_details/$id") },
++                                    onNavigateToAddExpense = { navController.navigate("expenses") },
++                                    onNavigateToAddService = { navController.navigate("service_logs") },
++                                    onNavigateToAddFuel = { navController.navigate("fuel_logs") },
++                                    onNavigateToVault = { navController.navigate("document_vault") }
+                                 )
+                             }
+ 
+                             composable("add_vehicle") {
+                                 AddVehicleScreen(
+                                     viewModel = viewModel,
+-                                    onNavigateBack = { this@MainActivity.finish() }
++                                    onNavigateBack = { navController.popBackStack() }
+                                 )
+                             }
+ 
+@@ -509,21 +484,21 @@
+                                 VehicleDetailsScreen(
+                                     viewModel = viewModel,
+                                     vehicleId = vehicleId,
+-                                    onNavigateBack = { this@MainActivity.finish() }
++                                    onNavigateBack = { navController.popBackStack() }
+                                 )
+                             }
+ 
+                             composable("service_logs") {
+                                 ServiceLogsScreen(
+                                     viewModel = viewModel,
+-                                    onNavigateBack = { this@MainActivity.finish() }
++                                    onNavigateBack = { navController.popBackStack() }
+                                 )
+                             }
+ 
+                             composable("fuel_logs") {
+                                 FuelLogsScreen(
+                                     viewModel = viewModel,
+-                                    onNavigateBack = { this@MainActivity.finish() }
++                                    onNavigateBack = { navController.popBackStack() }
+                                 )
+                             }
+ 
+Index: app/src/main/java/com/manavahana/ManaVahanaApplication.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.manavahana\r\n\r\nimport android.app.Application\r\nimport android.app.NotificationChannel\r\nimport android.app.NotificationManager\r\nimport android.content.Context\r\nimport android.os.Build\r\nimport androidx.work.ExistingPeriodicWorkPolicy\r\nimport androidx.work.PeriodicWorkRequestBuilder\r\nimport androidx.work.WorkManager\r\nimport com.manavahana.data.database.AppDatabase\r\nimport com.manavahana.data.preferences.UserPreferencesRepository\r\nimport com.manavahana.data.repository.ManaVahanaRepository\r\nimport com.manavahana.worker.ReminderWorker\r\nimport java.util.concurrent.TimeUnit\r\n\r\nclass ManaVahanaApplication : Application() {\r\n\r\n    // Lazy initialization for Dependency Injection Container\r\n    val database by lazy { AppDatabase.getDatabase(this) }\r\n    val repository by lazy {\r\n        ManaVahanaRepository(\r\n            database.vehicleDao(),\r\n            database.serviceLogDao(),\r\n            database.fuelLogDao(),\r\n            database.expenseDao(),\r\n            database.documentDao(),\r\n            database.reminderDao(),\r\n            database.userDao()\r\n        )\r\n    }\r\n    val userPreferencesRepository by lazy { UserPreferencesRepository(this) }\r\n\r\n    override fun onCreate() {\r\n        super.onCreate()\r\n        createNotificationChannel()\r\n        setupPeriodicReminders()\r\n    }\r\n\r\n    private fun createNotificationChannel() {\r\n        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {\r\n            val name = \"ManaVahana Reminders\"\r\n            val descriptionText = \"Notifications for vehicle maintenance, insurance expiries, and service renewals\"\r\n            val importance = NotificationManager.IMPORTANCE_HIGH\r\n            val channel = NotificationChannel(\"manavahana_reminders\", name, importance).apply {\r\n                description = descriptionText\r\n            }\r\n            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager\r\n            notificationManager.createNotificationChannel(channel)\r\n        }\r\n    }\r\n\r\n    private fun setupPeriodicReminders() {\r\n        try {\r\n            val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(\r\n                1, TimeUnit.HOURS\r\n            ).build()\r\n\r\n            WorkManager.getInstance(this).enqueueUniquePeriodicWork(\r\n                \"manavahana_reminder_work\",\r\n                ExistingPeriodicWorkPolicy.REPLACE,\r\n                workRequest\r\n            )\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n        }\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/manavahana/ManaVahanaApplication.kt b/app/src/main/java/com/manavahana/ManaVahanaApplication.kt
+--- a/app/src/main/java/com/manavahana/ManaVahanaApplication.kt	(revision c6a315fc37f7ea961ac4adbc6f969813304161bc)
++++ b/app/src/main/java/com/manavahana/ManaVahanaApplication.kt	(date 1786856733735)
+@@ -39,26 +39,48 @@
+ 
+     private fun createNotificationChannel() {
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+-            val name = "ManaVahana Reminders"
+-            val descriptionText = "Notifications for vehicle maintenance, insurance expiries, and service renewals"
+-            val importance = NotificationManager.IMPORTANCE_HIGH
+-            val channel = NotificationChannel("manavahana_reminders", name, importance).apply {
+-                description = descriptionText
+-            }
+             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+-            notificationManager.createNotificationChannel(channel)
++
++            val reminderChannel = NotificationChannel(
++                "manavahana_reminders",
++                "ManaVahana Reminders",
++                NotificationManager.IMPORTANCE_HIGH
++            ).apply {
++                description = "Notifications for vehicle maintenance, insurance expiries, and service renewals"
++                enableLights(true)
++                enableVibration(true)
++                setShowBadge(true)
++            }
++            notificationManager.createNotificationChannel(reminderChannel)
++
++            val updateChannel = NotificationChannel(
++                "app_update_channel",
++                "ManaVahana App Updates",
++                NotificationManager.IMPORTANCE_HIGH
++            ).apply {
++                description = "Notifications for available software and system updates"
++                enableLights(true)
++                enableVibration(true)
++                setShowBadge(true)
++                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
++            }
++            notificationManager.createNotificationChannel(updateChannel)
+         }
+     }
+ 
+     private fun setupPeriodicReminders() {
+         try {
++            val constraints = androidx.work.Constraints.Builder()
++                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
++                .build()
++
+             val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
+-                1, TimeUnit.HOURS
+-            ).build()
++                15, TimeUnit.MINUTES
++            ).setConstraints(constraints).build()
+ 
+             WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                 "manavahana_reminder_work",
+-                ExistingPeriodicWorkPolicy.REPLACE,
++                ExistingPeriodicWorkPolicy.KEEP,
+                 workRequest
+             )
+         } catch (e: Exception) {
+Index: app/src/main/java/com/manavahana/worker/ReminderWorker.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.manavahana.worker\r\n\r\nimport android.app.NotificationManager\r\nimport android.app.PendingIntent\r\nimport android.content.Context\r\nimport android.content.Intent\r\nimport androidx.core.app.NotificationCompat\r\nimport androidx.work.CoroutineWorker\r\nimport androidx.work.WorkerParameters\r\nimport com.manavahana.MainActivity\r\nimport com.manavahana.ManaVahanaApplication\r\nimport com.manavahana.data.model.Vehicle\r\nimport com.manavahana.data.model.Document\r\nimport com.manavahana.data.model.Reminder\r\nimport kotlinx.coroutines.flow.firstOrNull\r\nimport java.text.SimpleDateFormat\r\nimport java.util.Date\r\nimport java.util.Locale\r\n\r\nclass ReminderWorker(\r\n    appContext: Context,\r\n    workerParams: WorkerParameters\r\n) : CoroutineWorker(appContext, workerParams) {\r\n\r\n    override suspend fun doWork(): Result {\r\n        val app = applicationContext as? ManaVahanaApplication ?: return Result.failure()\r\n        val repository = app.repository\r\n\r\n        // Check for notifications permission first on newer devices\r\n        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {\r\n            val status = androidx.core.content.ContextCompat.checkSelfPermission(\r\n                applicationContext,\r\n                android.Manifest.permission.POST_NOTIFICATIONS\r\n            )\r\n            if (status != android.content.pm.PackageManager.PERMISSION_GRANTED) {\r\n                // If not granted, fail gracefully rather than crashing or throwing errors\r\n                return Result.success()\r\n            }\r\n        }\r\n\r\n        // Check if this was a directed, scheduled document expiry alarm\r\n        val docId = inputData.getInt(\"document_id\", -1)\r\n        if (docId != -1) {\r\n            val alertType = inputData.getString(\"alert_type\") ?: \"exact_day\"\r\n            val documents = repository.allDocuments.firstOrNull() ?: emptyList()\r\n            val document = documents.find { it.id == docId }\r\n            if (document != null && document.expiryDate != null) {\r\n                val sdf = SimpleDateFormat(\"dd MMM yyyy\", Locale.getDefault())\r\n                val formattedDate = sdf.format(Date(document.expiryDate))\r\n                val title = when (alertType) {\r\n                    \"7_days_before\" -> \"${document.docType}: ${document.title} త్వరలో ముగియనుంది (Expires in 7 Days)\"\r\n                    \"1_day_before\" -> \"${document.docType}: ${document.title} రేపటితో ముగియనుంది (Expires Tomorrow)\"\r\n                    else -> \"${document.docType}: ${document.title} కాలపరిమితి ఈరోజే ముగుస్తుంది (Expires Today)\"\r\n                }\r\n                val message = when (alertType) {\r\n                    \"7_days_before\" -> \"మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు 7 రోజుల్లో (${formattedDate}) ముగుస్తుంది. దయచేసి అప్\u200Cడేట్ చూసుకోండి!\"\r\n                    \"1_day_before\" -> \"మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు రేపటితో (${formattedDate}) ముగుస్తుంది. దయచేసి సిద్ధం చేసుకోండి!\"\r\n                    else -> \"మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు ఈరోజే (${formattedDate}) ముగిసింది. దయచేసి వెంటనే అప్\u200Cడేట్ చేయండి!\"\r\n                }\r\n                sendNotification(document.id + 40000, title, message)\r\n            }\r\n            return Result.success()\r\n        }\r\n\r\n        val currentTime = System.currentTimeMillis()\r\n        val notifyThreshold = 7 * 24 * 60 * 60 * 1000L // 7 days ahead for proactive warning\r\n        val sdf = SimpleDateFormat(\"dd MMM yyyy\", Locale.getDefault())\r\n\r\n        // 1. Check Explicit Reminders\r\n        val reminders = repository.pendingReminders.firstOrNull() ?: emptyList()\r\n        for (reminder in reminders) {\r\n            val diff = reminder.reminderDate - currentTime\r\n            val reminderTitle = reminder.title\r\n            if (diff in 0..notifyThreshold) {\r\n                sendNotification(\r\n                    id = reminder.id + 10000,\r\n                    title = \"ManaVahana: $reminderTitle (త్వరలో ఉంది/Upcoming)\",\r\n                    message = reminder.description.ifEmpty { \"మీకు ఒక రిమైండర్ టాస్క్ ఉంది.\" }\r\n                )\r\n            } else if (diff < 0) {\r\n                sendNotification(\r\n                    id = reminder.id + 10000,\r\n                    title = \"ManaVahana: $reminderTitle (గడువు ముగిసింది/Overdue)\",\r\n                    message = \"గడువు తేదీ: ${sdf.format(Date(reminder.reminderDate))}. ${reminder.description}\"\r\n                )\r\n            }\r\n        }\r\n\r\n        // 2. Check Vehicle Expiries (Insurance & Pollution)\r\n        val vehicles = repository.allVehicles.firstOrNull() ?: emptyList()\r\n        for (vehicle in vehicles) {\r\n            // Insurance Expiry check\r\n            if (vehicle.insuranceExpiry > 0) {\r\n                val insDiff = vehicle.insuranceExpiry - currentTime\r\n                if (insDiff in 0..notifyThreshold) {\r\n                    sendNotification(\r\n                        id = vehicle.id + 20000,\r\n                        title = \"${vehicle.vehicleName} ఇన్సూరెన్స్ త్వరలో ముగియనుంది\",\r\n                        message = \"మీ ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగియనుంది. ఇప్పుడే రిన్యూ చేసుకోండి!\"\r\n                    )\r\n                } else if (insDiff < 0) {\r\n                    sendNotification(\r\n                        id = vehicle.id + 20000,\r\n                        title = \"${vehicle.vehicleName} ఇన్సూరెన్స్ గడువు ముగిసింది!\",\r\n                        message = \"మీ వాహన ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగిసింది. దయచేసి వెంటనే రిన్యూ చేయండి!\"\r\n                    )\r\n                }\r\n            }\r\n\r\n            // Pollution Expiry check\r\n            if (vehicle.pollutionExpiry > 0) {\r\n                val polDiff = vehicle.pollutionExpiry - currentTime\r\n                if (polDiff in 0..notifyThreshold) {\r\n                    sendNotification(\r\n                        id = vehicle.id + 30000,\r\n                        title = \"${vehicle.vehicleName} పొల్యూషన్ సర్టిఫికేట్ అలర్ట్\",\r\n                        message = \"మీ పొల్యూషన్ సర్టిఫికേట్ ${sdf.format(Date(vehicle.pollutionExpiry))} తో ముగియనుంది. తనిఖీ చేయించుకోండి!\"\r\n                    )\r\n                } else if (polDiff < 0) {\r\n                    sendNotification(\r\n                        id = vehicle.id + 30000,\r\n                        title = \"${vehicle.vehicleName} పొల్యూషన్ గడువు ముగిసింది!\",\r\n                        message = \"మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(vehicle.pollutionExpiry))} నాటికి ముగిసింది. వెంటనే కొత్తది పొందండి!\"\r\n                    )\r\n                }\r\n            }\r\n        }\r\n\r\n        // 3. Check Document Expiries from vault repository\r\n        val documents = repository.allDocuments.firstOrNull() ?: emptyList()\r\n        for (document in documents) {\r\n            val expiry = document.expiryDate\r\n            if (expiry != null && expiry > 0) {\r\n                val docDiff = expiry - currentTime\r\n                if (docDiff in 0..notifyThreshold) {\r\n                    sendNotification(\r\n                        id = document.id + 40000,\r\n                        title = \"${document.docType}: ${document.title} త్వరలో ముగుస్తుంది\",\r\n                        message = \"మీ డాక్యుమెంట్ గడువు ${sdf.format(Date(expiry))} తేదీతో ముగియనుంది!\"\r\n                    )\r\n                } else if (docDiff < 0) {\r\n                    sendNotification(\r\n                        id = document.id + 40000,\r\n                        title = \"${document.docType}: ${document.title} గడువు ముగిసింది!\",\r\n                        message = \"మీ సేవ్ చేసిన డాక్యుమెంట్ ${sdf.format(Date(expiry))} తేదీతో ముగిసింది. దయచేసి అప్\u200Cడేట్ చేయండి!\"\r\n                    )\r\n                }\r\n            }\r\n        }\r\n\r\n        // 4. Check for App Updates in Background\r\n        try {\r\n            val packageName = applicationContext.packageName\r\n            val packageInfo = try {\r\n                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {\r\n                    applicationContext.packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))\r\n                } else {\r\n                    @Suppress(\"DEPRECATION\")\r\n                    applicationContext.packageManager.getPackageInfo(packageName, 0)\r\n                }\r\n            } catch (e: Exception) {\r\n                null\r\n            }\r\n            val realInstalledVersionName = packageInfo?.versionName ?: \"1.0\"\r\n\r\n            val rawOverriddenApp = app.userPreferencesRepository.overriddenAppVersion.firstOrNull()\r\n            val rawOverriddenPlayStore = app.userPreferencesRepository.overriddenPlayStoreVersion.firstOrNull()\r\n            val latestVersionName = if (!rawOverriddenPlayStore.isNullOrBlank()) {\r\n                rawOverriddenPlayStore\r\n            } else {\r\n                com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName) ?: realInstalledVersionName\r\n            }\r\n\r\n            val currentVersionName = if (!rawOverriddenApp.isNullOrBlank()) {\r\n                rawOverriddenApp\r\n            } else if (latestVersionName != realInstalledVersionName) {\r\n                com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(latestVersionName)\r\n            } else {\r\n                realInstalledVersionName\r\n            }\r\n\r\n            if (isNewerVersion(currentVersionName, latestVersionName)) {\r\n                val prefs = applicationContext.getSharedPreferences(\"app_update_prefs\", Context.MODE_PRIVATE)\r\n                val lastNotified = prefs.getString(\"last_notified_version_name\", \"\")\r\n                if (lastNotified != latestVersionName) {\r\n                    sendUpdateNotification(latestVersionName)\r\n                    prefs.edit().putString(\"last_notified_version_name\", latestVersionName).apply()\r\n                }\r\n            }\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n        }\r\n\r\n        return Result.success()\r\n    }\r\n\r\n    private fun isNewerVersion(current: String, latest: String): Boolean {\r\n        try {\r\n            val currParts = current.split(\".\").mapNotNull { it.toIntOrNull() }\r\n            val lateParts = latest.split(\".\").mapNotNull { it.toIntOrNull() }\r\n            val length = maxOf(currParts.size, lateParts.size)\r\n            for (i in 0 until length) {\r\n                val currVal = currParts.getOrNull(i) ?: 0\r\n                val lateVal = lateParts.getOrNull(i) ?: 0\r\n                if (lateVal > currVal) return true\r\n                if (currVal > lateVal) return false\r\n            }\r\n        } catch (e: Exception) {\r\n            return latest != current\r\n        }\r\n        return false\r\n    }\r\n\r\n    private suspend fun sendUpdateNotification(version: String) {\r\n        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {\r\n            if (androidx.core.content.ContextCompat.checkSelfPermission(\r\n                    applicationContext,\r\n                    android.Manifest.permission.POST_NOTIFICATIONS\r\n                ) != android.content.pm.PackageManager.PERMISSION_GRANTED\r\n            ) {\r\n                return\r\n            }\r\n        }\r\n\r\n        val app = applicationContext as? ManaVahanaApplication\r\n        val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()\r\n        val langCode = if (rawLang.isNullOrEmpty()) \"en\" else rawLang\r\n\r\n        val title = com.manavahana.ui.Localizer.get(\"update_available_title\", langCode)\r\n        val template = com.manavahana.ui.Localizer.get(\"update_available_desc\", langCode)\r\n        val desc = template.replace(\"%1\\$s\", version)\r\n\r\n        val intent = Intent(applicationContext, MainActivity::class.java).apply {\r\n            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK\r\n        }\r\n        val pendingIntent = PendingIntent.getActivity(\r\n            applicationContext,\r\n            7895,\r\n            intent,\r\n            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE\r\n        )\r\n\r\n        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager\r\n        val channelId = \"app_update_channel\"\r\n        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {\r\n            val channel = android.app.NotificationChannel(\r\n                channelId,\r\n                \"ManaVahana App Updates\",\r\n                NotificationManager.IMPORTANCE_HIGH\r\n            ).apply {\r\n                description = \"Notifications for available software and system updates\"\r\n            }\r\n            notificationManager.createNotificationChannel(channel)\r\n        }\r\n\r\n        val notification = NotificationCompat.Builder(applicationContext, channelId)\r\n            .setSmallIcon(android.R.drawable.stat_sys_download)\r\n            .setContentTitle(title)\r\n            .setContentText(desc)\r\n            .setStyle(NotificationCompat.BigTextStyle().bigText(desc))\r\n            .setPriority(NotificationCompat.PRIORITY_HIGH)\r\n            .setContentIntent(pendingIntent)\r\n            .setAutoCancel(true)\r\n            .build()\r\n\r\n        try {\r\n            notificationManager.notify(7895, notification)\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n        }\r\n    }\r\n\r\n    private suspend fun sendNotification(id: Int, title: String, message: String) {\r\n        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {\r\n            if (androidx.core.content.ContextCompat.checkSelfPermission(\r\n                    applicationContext,\r\n                    android.Manifest.permission.POST_NOTIFICATIONS\r\n                ) != android.content.pm.PackageManager.PERMISSION_GRANTED\r\n            ) {\r\n                return\r\n            }\r\n        }\r\n\r\n        val app = applicationContext as? ManaVahanaApplication\r\n        val rawLang = app?.userPreferencesRepository?.selectedLanguage?.firstOrNull()\r\n        val langCode = if (rawLang.isNullOrEmpty()) \"en\" else rawLang\r\n        val translatedTitle = com.manavahana.ui.Localizer.translate(title, langCode)\r\n        val translatedMessage = com.manavahana.ui.Localizer.translate(message, langCode)\r\n\r\n        val intent = Intent(applicationContext, MainActivity::class.java).apply {\r\n            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK\r\n        }\r\n        val pendingIntent = PendingIntent.getActivity(\r\n            applicationContext,\r\n            id,\r\n            intent,\r\n            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE\r\n        )\r\n\r\n        val notification = NotificationCompat.Builder(applicationContext, \"manavahana_reminders\")\r\n            .setSmallIcon(android.R.drawable.ic_dialog_info)\r\n            .setContentTitle(translatedTitle)\r\n            .setContentText(translatedMessage)\r\n            .setStyle(NotificationCompat.BigTextStyle().bigText(translatedMessage))\r\n            .setPriority(NotificationCompat.PRIORITY_HIGH)\r\n            .setContentIntent(pendingIntent)\r\n            .setAutoCancel(true)\r\n            .build()\r\n\r\n        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager\r\n        try {\r\n            notificationManager.notify(id, notification)\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n        }\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/manavahana/worker/ReminderWorker.kt b/app/src/main/java/com/manavahana/worker/ReminderWorker.kt
+--- a/app/src/main/java/com/manavahana/worker/ReminderWorker.kt	(revision c6a315fc37f7ea961ac4adbc6f969813304161bc)
++++ b/app/src/main/java/com/manavahana/worker/ReminderWorker.kt	(date 1786856710199)
+@@ -148,7 +148,7 @@
+             }
+         }
+ 
+-        // 4. Check for App Updates in Background
++        // 4. Check for App Updates in Background (Play Store / In-App Updates)
+         try {
+             val packageName = applicationContext.packageName
+             val packageInfo = try {
+@@ -162,29 +162,59 @@
+                 null
+             }
+             val realInstalledVersionName = packageInfo?.versionName ?: "1.0"
+-
+-            val rawOverriddenApp = app.userPreferencesRepository.overriddenAppVersion.firstOrNull()
+-            val rawOverriddenPlayStore = app.userPreferencesRepository.overriddenPlayStoreVersion.firstOrNull()
+-            val latestVersionName = if (!rawOverriddenPlayStore.isNullOrBlank()) {
+-                rawOverriddenPlayStore
++            val installedVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
++                packageInfo?.longVersionCode?.toInt() ?: 1
+             } else {
+-                com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName) ?: realInstalledVersionName
++                @Suppress("DEPRECATION")
++                packageInfo?.versionCode ?: 1
+             }
+ 
+-            val currentVersionName = if (!rawOverriddenApp.isNullOrBlank()) {
+-                rawOverriddenApp
+-            } else if (latestVersionName != realInstalledVersionName) {
+-                com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(latestVersionName)
+-            } else {
+-                realInstalledVersionName
++            var isUpdateFound = false
++            var targetVersionName = ""
++            var targetVersionCode = -1
++
++            // Strategy A: Play Core In-App Update API
++            try {
++                val appUpdateManager = com.google.android.play.core.appupdate.AppUpdateManagerFactory.create(applicationContext)
++                val appUpdateInfo = com.google.android.gms.tasks.Tasks.await(appUpdateManager.appUpdateInfo)
++                if (appUpdateInfo.updateAvailability() == com.google.android.play.core.install.model.UpdateAvailability.UPDATE_AVAILABLE) {
++                    isUpdateFound = true
++                    targetVersionCode = appUpdateInfo.availableVersionCode()
++                    val scraped = com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName)
++                    targetVersionName = if (!scraped.isNullOrBlank() && com.manavahana.ui.PlayStoreVersionFetcher.isNewerVersion(realInstalledVersionName, scraped)) {
++                        scraped
++                    } else {
++                        "v$targetVersionCode"
++                    }
++                }
++            } catch (e: Exception) {
++                // Play Core unavailable or unreleased in testing
+             }
+ 
+-            if (isNewerVersion(currentVersionName, latestVersionName)) {
++            // Strategy B: Play Store Web Metadata
++            if (!isUpdateFound) {
++                val scrapedVersion = com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName)
++                if (!scrapedVersion.isNullOrBlank() && com.manavahana.ui.PlayStoreVersionFetcher.isNewerVersion(realInstalledVersionName, scrapedVersion)) {
++                    isUpdateFound = true
++                    targetVersionName = scrapedVersion
++                    targetVersionCode = installedVersionCode + 1
++                }
++            }
++
++            if (isUpdateFound && targetVersionName.isNotBlank()) {
+                 val prefs = applicationContext.getSharedPreferences("app_update_prefs", Context.MODE_PRIVATE)
+-                val lastNotified = prefs.getString("last_notified_version_name", "")
+-                if (lastNotified != latestVersionName) {
+-                    sendUpdateNotification(latestVersionName)
+-                    prefs.edit().putString("last_notified_version_name", latestVersionName).apply()
++                val lastNotifiedName = prefs.getString("last_notified_version_name", "")
++                val lastNotifiedCode = prefs.getInt("last_notified_version_code", -1)
++
++                val alreadyNotified = (lastNotifiedCode == targetVersionCode && targetVersionCode > 0) || (lastNotifiedName == targetVersionName)
++                if (!alreadyNotified) {
++                    val posted = sendUpdateNotification(targetVersionName)
++                    if (posted) {
++                        prefs.edit()
++                            .putString("last_notified_version_name", targetVersionName)
++                            .putInt("last_notified_version_code", targetVersionCode)
++                            .apply()
++                    }
+                 }
+             }
+         } catch (e: Exception) {
+@@ -194,31 +224,14 @@
+         return Result.success()
+     }
+ 
+-    private fun isNewerVersion(current: String, latest: String): Boolean {
+-        try {
+-            val currParts = current.split(".").mapNotNull { it.toIntOrNull() }
+-            val lateParts = latest.split(".").mapNotNull { it.toIntOrNull() }
+-            val length = maxOf(currParts.size, lateParts.size)
+-            for (i in 0 until length) {
+-                val currVal = currParts.getOrNull(i) ?: 0
+-                val lateVal = lateParts.getOrNull(i) ?: 0
+-                if (lateVal > currVal) return true
+-                if (currVal > lateVal) return false
+-            }
+-        } catch (e: Exception) {
+-            return latest != current
+-        }
+-        return false
+-    }
+-
+-    private suspend fun sendUpdateNotification(version: String) {
++    private suspend fun sendUpdateNotification(version: String): Boolean {
+         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+             if (androidx.core.content.ContextCompat.checkSelfPermission(
+                     applicationContext,
+                     android.Manifest.permission.POST_NOTIFICATIONS
+                 ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+             ) {
+-                return
++                return false
+             }
+         }
+ 
+@@ -229,6 +242,7 @@
+         val title = com.manavahana.ui.Localizer.get("update_available_title", langCode)
+         val template = com.manavahana.ui.Localizer.get("update_available_desc", langCode)
+         val desc = template.replace("%1\$s", version)
++        val actionTitle = if (langCode == "te") "ఇప్పుడే అప్‌డేట్ చేయండి" else "Update Now"
+ 
+         val intent = Intent(applicationContext, MainActivity::class.java).apply {
+             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+@@ -239,6 +253,16 @@
+             intent,
+             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+         )
++
++        val storeIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=${applicationContext.packageName}")).apply {
++            flags = Intent.FLAG_ACTIVITY_NEW_TASK
++        }
++        val storePendingIntent = PendingIntent.getActivity(
++            applicationContext,
++            7896,
++            storeIntent,
++            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
++        )
+ 
+         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+         val channelId = "app_update_channel"
+@@ -249,24 +273,41 @@
+                 NotificationManager.IMPORTANCE_HIGH
+             ).apply {
+                 description = "Notifications for available software and system updates"
++                enableLights(true)
++                enableVibration(true)
++                setShowBadge(true)
++                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+             }
+             notificationManager.createNotificationChannel(channel)
+         }
+ 
++        val largeIconBitmap = try {
++            android.graphics.BitmapFactory.decodeResource(applicationContext.resources, com.manavahana.R.mipmap.ic_launcher)
++        } catch (e: Exception) {
++            null
++        }
++
+         val notification = NotificationCompat.Builder(applicationContext, channelId)
+             .setSmallIcon(android.R.drawable.stat_sys_download)
++            .apply {
++                largeIconBitmap?.let { setLargeIcon(it) }
++            }
+             .setContentTitle(title)
+             .setContentText(desc)
+             .setStyle(NotificationCompat.BigTextStyle().bigText(desc))
+             .setPriority(NotificationCompat.PRIORITY_HIGH)
++            .setDefaults(NotificationCompat.DEFAULT_ALL)
+             .setContentIntent(pendingIntent)
++            .addAction(android.R.drawable.stat_sys_download, actionTitle, storePendingIntent)
+             .setAutoCancel(true)
+             .build()
+ 
+-        try {
++        return try {
+             notificationManager.notify(7895, notification)
++            true
+         } catch (e: Exception) {
+             e.printStackTrace()
++            false
+         }
+     }
+ 
