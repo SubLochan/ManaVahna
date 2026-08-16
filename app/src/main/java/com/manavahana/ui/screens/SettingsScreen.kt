@@ -501,10 +501,6 @@ fun SettingsScreen(
                 updateHelper.fetchPlayStoreVersionDirectly()
             }
 
-            var isEditingVersions by remember { mutableStateOf(false) }
-            var tempCurrentVersion by remember { mutableStateOf("") }
-            var tempPlayStoreVersion by remember { mutableStateOf("") }
-
             val packageInfo = remember(context) {
                 try {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -525,24 +521,11 @@ fun SettingsScreen(
                 packageInfo?.versionCode?.toLong() ?: 1L
             }
 
-            val currentPlayStoreVersion = overriddenPlayStoreVersion ?: livePlayStoreVersion
-            val dynamicCurrentVersion = remember(currentPlayStoreVersion, installedVersionName) {
-                if (currentPlayStoreVersion.isNotEmpty() && 
-                    currentPlayStoreVersion != "Retrieving..." && 
-                    currentPlayStoreVersion != "Not checked yet") {
-                    com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(currentPlayStoreVersion)
-                } else {
-                    installedVersionName
-                }
+            val currentPlayStoreVersion: String = when {
+                livePlayStoreVersion.isNotBlank() && livePlayStoreVersion != "Not checked yet" -> livePlayStoreVersion
+                else -> "Fetching from Play Store..."
             }
-            val currentAppVersion = overriddenAppVersion ?: dynamicCurrentVersion
-
-            LaunchedEffect(isEditingVersions) {
-                if (isEditingVersions) {
-                    tempCurrentVersion = currentAppVersion
-                    tempPlayStoreVersion = currentPlayStoreVersion
-                }
-            }
+            val currentAppVersion: String = installedVersionName
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -561,156 +544,72 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        IconButton(
-                            onClick = { isEditingVersions = !isEditingVersions },
-                            modifier = Modifier.size(36.dp).testTag("edit_versions_btn")
-                        ) {
-                            Icon(
-                                imageVector = if (isEditingVersions) Icons.Default.Close else Icons.Default.Edit,
-                                contentDescription = "Edit Versions",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
                     }
 
                     Text(
-                        text = "ManaVahana matches your device Play Store configuration. Keep track of immediate or flexible releases and verify schema structures are completely preserved.",
+                        text = "ManaVahana connects directly to Google Play Store to fetch and notify you about new releases and feature updates.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
 
                     // Display current update status text
-                    val currentStatusText = when (updateState) {
-                        is UpdateStatus.Idle -> "No update checking has run yet."
-                        is UpdateStatus.Checking -> "Checking Google Play Store for active rolls..."
+                    val currentStatusText = when (val status = updateState) {
+                        is UpdateStatus.Idle -> "No update check performed yet."
+                        is UpdateStatus.Checking -> "Checking Google Play Store for active releases..."
                         is UpdateStatus.UpToDate -> "ManaVahana is completely up to date!"
                         is UpdateStatus.UpdateAvailable -> {
-                            val info = updateState as UpdateStatus.UpdateAvailable
-                            "Update Available! New Version Code: ${info.versionCode} ${if (info.isSimulation) "(SIMULATION)" else ""}"
+                            val ver = if (status.versionName.isNotBlank()) " (v${status.versionName})" else ""
+                            "New update available$ver on Google Play Store!"
                         }
-                        is UpdateStatus.Error -> "Store check failed: ${(updateState as UpdateStatus.Error).message}"
+                        is UpdateStatus.Downloading -> "Downloading update from Google Play..."
+                        is UpdateStatus.UpdateDownloaded -> "Update Downloaded! Ready to install & restart."
+                        is UpdateStatus.Installing -> "Installing latest update package..."
+                        is UpdateStatus.Error -> "Store check notice: ${status.message}"
                     }
 
-                    if (isEditingVersions) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    text = "Configure Version Overrides",
-                                    fontSize = 13.sp,
+                                    text = "Current Version Name:",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
-                                
-                                OutlinedTextField(
-                                    value = tempCurrentVersion,
-                                    onValueChange = { tempCurrentVersion = it },
-                                    label = { Text("Simulate Current Version Name") },
-                                    singleLine = true,
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    modifier = Modifier.fillMaxWidth().testTag("override_current_version_input")
+                                Text(
+                                    text = currentAppVersion,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-
-                                OutlinedTextField(
-                                    value = tempPlayStoreVersion,
-                                    onValueChange = { tempPlayStoreVersion = it },
-                                    label = { Text("Simulate Latest Play Store Version") },
-                                    singleLine = true,
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    modifier = Modifier.fillMaxWidth().testTag("override_play_store_version_input")
-                                )
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            viewModel.updateSimulatedAppVersion(tempCurrentVersion)
-                                            viewModel.updateSimulatedPlayStoreVersion(tempPlayStoreVersion)
-                                            isEditingVersions = false
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Save", fontSize = 11.sp)
-                                    }
-
-                                    OutlinedButton(
-                                        onClick = {
-                                            isEditingVersions = false
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Cancel", fontSize = 11.sp)
-                                    }
-
-                                    FilledTonalButton(
-                                        onClick = {
-                                            viewModel.updateSimulatedAppVersion("")
-                                            viewModel.updateSimulatedPlayStoreVersion("")
-                                            updateHelper.fetchPlayStoreVersionDirectly()
-                                            isEditingVersions = false
-                                        },
-                                        modifier = Modifier.weight(1.2f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Reset Defaults", fontSize = 10.sp)
-                                    }
-                                }
                             }
-                        }
-                    } else {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Current Version Name:",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = currentAppVersion,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Latest Play Store Version:",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = currentPlayStoreVersion,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Latest Play Store Version:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = currentPlayStoreVersion,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -749,32 +648,33 @@ fun SettingsScreen(
                         }
                     }
 
-                    Row(
+                    Button(
+                        onClick = { updateHelper.checkForUpdates(forceNotification = true) },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Button(
-                            onClick = { updateHelper.checkForUpdates(forceNotification = true) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Check Updates", fontSize = 11.sp)
-                        }
+                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Check Updates", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
 
-                        OutlinedButton(
-                            onClick = { updateHelper.triggerSimulation(isFlexible = true) },
-                            modifier = Modifier.weight(1f),
+                    if (updateState is UpdateStatus.UpdateDownloaded) {
+                        Button(
+                            onClick = {
+                                viewModel.updateSimulatedAppVersion(currentPlayStoreVersion)
+                                updateHelper.completeUpdate()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.Duo, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Simulate Release", fontSize = 11.sp)
+                            Text("Install Update & Restart App", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
-                    if (updateState is UpdateStatus.UpdateAvailable) {
+                    if (updateState is UpdateStatus.UpdateAvailable || updateState is UpdateStatus.UpdateDownloaded) {
                         Button(
                             onClick = { updateHelper.resetStatus() },
                             modifier = Modifier.fillMaxWidth(),

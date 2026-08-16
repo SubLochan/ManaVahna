@@ -64,14 +64,14 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "manavahana_database"
                 )
-                    // PREVENT DESTRUCTIVE DATA LOSS:
-                    // By default, fallbackToDestructiveMigration() wipes out the entire database when the version increments.
-                    // In production, we comment out or remove fallbackToDestructiveMigration() and instead specify .addMigrations(...)
-                    // fallbackToDestructiveMigration() // -> REMOVED to protect user data from being wiped during updates!
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                    .fallbackToDestructiveMigration(dropAllTables = true)
-                    .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
-                    .build()
+                // PREVENT DESTRUCTIVE DATA LOSS:
+                // By default, fallbackToDestructiveMigration() wipes out the entire database when the version increments.
+                // In production, we comment out or remove fallbackToDestructiveMigration() and instead specify .addMigrations(...)
+                // fallbackToDestructiveMigration() // -> REMOVED to protect user data from being wiped during updates!
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+                .build()
                 INSTANCE = instance
                 instance
             }

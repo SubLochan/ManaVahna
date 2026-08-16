@@ -148,7 +148,7 @@ class ReminderWorker(
             }
         }
 
-        // 4. Check for App Updates in Background
+        // 4. Check for App Updates in Background (Play Store / In-App Updates)
         try {
             val packageName = applicationContext.packageName
             val packageInfo = try {
@@ -162,29 +162,59 @@ class ReminderWorker(
                 null
             }
             val realInstalledVersionName = packageInfo?.versionName ?: "1.0"
-
-            val rawOverriddenApp = app.userPreferencesRepository.overriddenAppVersion.firstOrNull()
-            val rawOverriddenPlayStore = app.userPreferencesRepository.overriddenPlayStoreVersion.firstOrNull()
-            val latestVersionName = if (!rawOverriddenPlayStore.isNullOrBlank()) {
-                rawOverriddenPlayStore
+            val installedVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo?.longVersionCode?.toInt() ?: 1
             } else {
-                com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName) ?: realInstalledVersionName
+                @Suppress("DEPRECATION")
+                packageInfo?.versionCode ?: 1
             }
 
-            val currentVersionName = if (!rawOverriddenApp.isNullOrBlank()) {
-                rawOverriddenApp
-            } else if (latestVersionName != realInstalledVersionName) {
-                com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(latestVersionName)
-            } else {
-                realInstalledVersionName
+            var isUpdateFound = false
+            var targetVersionName = ""
+            var targetVersionCode = -1
+
+            // Strategy A: Play Core In-App Update API
+            try {
+                val appUpdateManager = com.google.android.play.core.appupdate.AppUpdateManagerFactory.create(applicationContext)
+                val appUpdateInfo = com.google.android.gms.tasks.Tasks.await(appUpdateManager.appUpdateInfo)
+                if (appUpdateInfo.updateAvailability() == com.google.android.play.core.install.model.UpdateAvailability.UPDATE_AVAILABLE) {
+                    isUpdateFound = true
+                    targetVersionCode = appUpdateInfo.availableVersionCode()
+                    val scraped = com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName)
+                    targetVersionName = if (!scraped.isNullOrBlank() && com.manavahana.ui.PlayStoreVersionFetcher.isNewerVersion(realInstalledVersionName, scraped)) {
+                        scraped
+                    } else {
+                        "v$targetVersionCode"
+                    }
+                }
+            } catch (e: Exception) {
+                // Play Core unavailable or unreleased in testing
             }
 
-            if (isNewerVersion(currentVersionName, latestVersionName)) {
+            // Strategy B: Play Store Web Metadata
+            if (!isUpdateFound) {
+                val scrapedVersion = com.manavahana.ui.PlayStoreVersionFetcher.fetchVersion(packageName)
+                if (!scrapedVersion.isNullOrBlank() && com.manavahana.ui.PlayStoreVersionFetcher.isNewerVersion(realInstalledVersionName, scrapedVersion)) {
+                    isUpdateFound = true
+                    targetVersionName = scrapedVersion
+                    targetVersionCode = installedVersionCode + 1
+                }
+            }
+
+            if (isUpdateFound && targetVersionName.isNotBlank()) {
                 val prefs = applicationContext.getSharedPreferences("app_update_prefs", Context.MODE_PRIVATE)
-                val lastNotified = prefs.getString("last_notified_version_name", "")
-                if (lastNotified != latestVersionName) {
-                    sendUpdateNotification(latestVersionName)
-                    prefs.edit().putString("last_notified_version_name", latestVersionName).apply()
+                val lastNotifiedName = prefs.getString("last_notified_version_name", "")
+                val lastNotifiedCode = prefs.getInt("last_notified_version_code", -1)
+
+                val alreadyNotified = (lastNotifiedCode == targetVersionCode && targetVersionCode > 0) || (lastNotifiedName == targetVersionName)
+                if (!alreadyNotified) {
+                    val posted = sendUpdateNotification(targetVersionName)
+                    if (posted) {
+                        prefs.edit()
+                            .putString("last_notified_version_name", targetVersionName)
+                            .putInt("last_notified_version_code", targetVersionCode)
+                            .apply()
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -194,31 +224,14 @@ class ReminderWorker(
         return Result.success()
     }
 
-    private fun isNewerVersion(current: String, latest: String): Boolean {
-        try {
-            val currParts = current.split(".").mapNotNull { it.toIntOrNull() }
-            val lateParts = latest.split(".").mapNotNull { it.toIntOrNull() }
-            val length = maxOf(currParts.size, lateParts.size)
-            for (i in 0 until length) {
-                val currVal = currParts.getOrNull(i) ?: 0
-                val lateVal = lateParts.getOrNull(i) ?: 0
-                if (lateVal > currVal) return true
-                if (currVal > lateVal) return false
-            }
-        } catch (e: Exception) {
-            return latest != current
-        }
-        return false
-    }
-
-    private suspend fun sendUpdateNotification(version: String) {
+    private suspend fun sendUpdateNotification(version: String): Boolean {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (androidx.core.content.ContextCompat.checkSelfPermission(
                     applicationContext,
                     android.Manifest.permission.POST_NOTIFICATIONS
                 ) != android.content.pm.PackageManager.PERMISSION_GRANTED
             ) {
-                return
+                return false
             }
         }
 
@@ -229,6 +242,7 @@ class ReminderWorker(
         val title = com.manavahana.ui.Localizer.get("update_available_title", langCode)
         val template = com.manavahana.ui.Localizer.get("update_available_desc", langCode)
         val desc = template.replace("%1\$s", version)
+        val actionTitle = if (langCode == "te") "ఇప్పుడే అప్‌డేట్ చేయండి" else "Update Now"
 
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -237,6 +251,16 @@ class ReminderWorker(
             applicationContext,
             7895,
             intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val storeIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=${applicationContext.packageName}")).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        val storePendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            7896,
+            storeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -249,24 +273,41 @@ class ReminderWorker(
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notifications for available software and system updates"
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             notificationManager.createNotificationChannel(channel)
         }
 
+        val largeIconBitmap = try {
+            android.graphics.BitmapFactory.decodeResource(applicationContext.resources, com.manavahana.R.mipmap.ic_launcher)
+        } catch (e: Exception) {
+            null
+        }
+
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(android.R.drawable.stat_sys_download)
+            .apply {
+                largeIconBitmap?.let { setLargeIcon(it) }
+            }
             .setContentTitle(title)
             .setContentText(desc)
             .setStyle(NotificationCompat.BigTextStyle().bigText(desc))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.stat_sys_download, actionTitle, storePendingIntent)
             .setAutoCancel(true)
             .build()
 
-        try {
+        return try {
             notificationManager.notify(7895, notification)
+            true
         } catch (e: Exception) {
             e.printStackTrace()
+            false
         }
     }
 

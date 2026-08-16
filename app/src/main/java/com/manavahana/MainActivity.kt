@@ -99,25 +99,33 @@ class MainActivity : ComponentActivity() {
                     val currentBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = currentBackStackEntry?.destination?.route
 
-                    // Intercept back button on root dashboard screen to finish activity cleanly
-                    BackHandler(enabled = currentRoute == "dashboard" || currentRoute == null) {
-                        this@MainActivity.finish()
-                    }
-
                     val isPinVerified by viewModel.isPinVerified.collectAsState()
                     val isPinEnabled by viewModel.isPinLockEnabled.collectAsState()
 
-                // List of destinations that require the Bottom Navigation Bar
-                val bottomNavDestinations = listOf(
-                    "dashboard",
-                    "fuel_logs",
-                    "service_logs",
-                    "expenses",
-                    "document_vault",
-                    "settings"
-                )
+                    // List of destinations that require the Bottom Navigation Bar
+                    val bottomNavDestinations = listOf(
+                        "dashboard",
+                        "fuel_logs",
+                        "service_logs",
+                        "expenses",
+                        "document_vault",
+                        "settings"
+                    )
 
-                var showQuickActions by remember { mutableStateOf(false) }
+                    var showQuickActions by remember { mutableStateOf(false) }
+
+                    // Handle Android system back press: close quick actions if open, navigate back if in subscreen, otherwise finish activity on dashboard/splash/login
+                    BackHandler(enabled = true) {
+                        if (showQuickActions) {
+                            showQuickActions = false
+                        } else if (currentRoute == "dashboard" || currentRoute == "splash" || currentRoute == "login" || currentRoute == "language_selection" || currentRoute == "onboarding") {
+                            this@MainActivity.finish()
+                        } else {
+                            if (!navController.popBackStack()) {
+                                this@MainActivity.finish()
+                            }
+                        }
+                    }
                 val showBottomBar = currentRoute in bottomNavDestinations && (isPinVerified || !isPinEnabled)
 
                 Scaffold(
@@ -170,7 +178,7 @@ class MainActivity : ComponentActivity() {
                                                         .clickable {
                                                             if (currentRoute != item.route) {
                                                                 navController.navigate(item.route) {
-                                                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                                    popUpTo("dashboard") { saveState = true }
                                                                     launchSingleTop = true
                                                                     restoreState = true
                                                                 }
@@ -206,7 +214,7 @@ class MainActivity : ComponentActivity() {
                                                         .clickable {
                                                             if (currentRoute != item.route) {
                                                                 navController.navigate(item.route) {
-                                                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                                    popUpTo("dashboard") { saveState = true }
                                                                     launchSingleTop = true
                                                                     restoreState = true
                                                                 }
@@ -316,7 +324,9 @@ class MainActivity : ComponentActivity() {
                                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                                     .clickable {
                                                         showQuickActions = false
-                                                        navController.navigate(action.route)
+                                                        navController.navigate(action.route) {
+                                                            launchSingleTop = true
+                                                        }
                                                     }
                                                     .padding(14.dp),
                                                 verticalAlignment = Alignment.CenterVertically,

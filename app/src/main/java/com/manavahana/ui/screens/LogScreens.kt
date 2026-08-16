@@ -281,19 +281,22 @@ fun ServiceLogsScreen(
                     }
 
                     item {
-                        val displayNext = if (nextServiceDate > 0) sdf.format(Date(nextServiceDate)) else "Not set"
-                        OutlinedTextField(
-                            value = displayNext,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Next Recall Date") },
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                val c = Calendar.getInstance()
-                                DatePickerDialog(context, { _, y, m, d ->
-                                    val sel = Calendar.getInstance().apply { set(y, m, d) }
-                                    nextServiceDate = sel.timeInMillis
-                                }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
-                            }
+                        DatePickerField(
+                            label = "Service Date",
+                            timestamp = serviceDate,
+                            onDateSelected = { serviceDate = it },
+                            context = context,
+                            sdf = sdf
+                        )
+                    }
+
+                    item {
+                        DatePickerField(
+                            label = "Next Recall Date",
+                            timestamp = nextServiceDate,
+                            onDateSelected = { nextServiceDate = it },
+                            context = context,
+                            sdf = sdf
                         )
                     }
                 }
@@ -955,6 +958,16 @@ fun ExpensesScreen(
                             onValueChange = { notes = it },
                             label = { Text("Notes / Description") },
                             modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        DatePickerField(
+                            label = "Expense Date",
+                            timestamp = expenseDate,
+                            onDateSelected = { expenseDate = it },
+                            context = context,
+                            sdf = sdf
                         )
                     }
                 }

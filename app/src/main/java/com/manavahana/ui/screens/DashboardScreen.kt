@@ -268,8 +268,11 @@ fun DashboardScreen(
             }
 
             // Play Store In-App Updates
-            if (updateStatus is UpdateStatus.UpdateAvailable) {
-                val status = updateStatus as UpdateStatus.UpdateAvailable
+            if (updateStatus is UpdateStatus.UpdateAvailable ||
+                updateStatus is UpdateStatus.Downloading ||
+                updateStatus is UpdateStatus.UpdateDownloaded ||
+                updateStatus is UpdateStatus.Installing
+            ) {
                 item {
                     Card(
                         modifier = Modifier
@@ -292,13 +295,23 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.NewReleases,
+                                    imageVector = when (updateStatus) {
+                                        is UpdateStatus.UpdateDownloaded -> Icons.Default.SystemUpdate
+                                        is UpdateStatus.Downloading, is UpdateStatus.Installing -> Icons.Default.Sync
+                                        else -> Icons.Default.NewReleases
+                                    },
                                     contentDescription = "అప్‌డేట్",
                                     tint = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier.size(24.dp)
                                 )
+                                val cardTitle = when (updateStatus) {
+                                    is UpdateStatus.Downloading -> if (langCode == "te") "అప్‌డేట్ డౌన్‌లోడ్ అవుతోంది..." else "Downloading Update..."
+                                    is UpdateStatus.UpdateDownloaded -> if (langCode == "te") "అప్‌డేట్ సిద్ధంగా ఉంది!" else "Update Ready to Install!"
+                                    is UpdateStatus.Installing -> if (langCode == "te") "అప్‌డేట్ ఇన్‌స్టాల్ అవుతోంది..." else "Installing Update..."
+                                    else -> Localizer.get("update_available_title", langCode)
+                                }
                                 Text(
-                                    text = Localizer.get("update_available_title", langCode),
+                                    text = cardTitle,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -307,14 +320,29 @@ fun DashboardScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            val versionStr = if (livePlayStoreVersion != "Retrieving..." && livePlayStoreVersion != "Not checked yet") {
-                                livePlayStoreVersion
-                            } else {
-                                "1.6"
+                            val statusVer = when (val s = updateStatus) {
+                                is UpdateStatus.UpdateAvailable -> s.versionName
+                                is UpdateStatus.UpdateDownloaded -> s.versionName
+                                else -> ""
+                            }
+                            val versionStr = when {
+                                statusVer.isNotBlank() -> statusVer
+                                livePlayStoreVersion.isNotBlank() && 
+                                !livePlayStoreVersion.startsWith("Checking") && 
+                                !livePlayStoreVersion.startsWith("Not checked") && 
+                                !livePlayStoreVersion.startsWith("Published") -> livePlayStoreVersion
+                                else -> "New"
+                            }
+
+                            val cardDesc = when (updateStatus) {
+                                is UpdateStatus.Downloading -> if (langCode == "te") "నేపథ్యంలో అప్‌డేట్ డౌన్‌లోడ్ చేయబడుతోంది." else "Downloading the latest update package in background."
+                                is UpdateStatus.UpdateDownloaded -> if (langCode == "te") "కొత్త వెర్షన్ $versionStr సరిగ్గా డౌన్‌లోడ్ చేయబడింది. ఇన్‌స్టాల్ చేయడానికి నొక్కండి." else "Version $versionStr has been downloaded. Tap to complete installation and restart."
+                                is UpdateStatus.Installing -> if (langCode == "te") "అప్‌డేట్ ఇన్‌స్టాల్ చేయబడుతోంది..." else "App is applying the latest update..."
+                                else -> Localizer.get("update_available_desc", langCode).replace("%1\$s", versionStr)
                             }
 
                             Text(
-                                text = Localizer.get("update_available_desc", langCode).replace("%1\$s", versionStr),
+                                text = cardDesc,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
                             )
@@ -326,50 +354,70 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                TextButton(
-                                    onClick = { updateHelper.resetStatus() },
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
-                                    ),
-                                    modifier = Modifier.testTag("update_later_button")
-                                ) {
-                                    Text(Localizer.get("update_later", langCode), fontWeight = FontWeight.Bold)
-                                }
+                                if (updateStatus is UpdateStatus.UpdateAvailable) {
+                                    TextButton(
+                                        onClick = { updateHelper.resetStatus() },
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                        ),
+                                        modifier = Modifier.testTag("update_later_button")
+                                    ) {
+                                        Text(Localizer.get("update_later", langCode), fontWeight = FontWeight.Bold)
+                                    }
 
-                                Spacer(modifier = Modifier.width(12.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
 
-                                val activity = context as? Activity
-                                Button(
-                                    onClick = {
-                                        // Update local version preference storage to correspond to latest version
-                                        viewModel.updateSimulatedAppVersion(versionStr)
-                                        
-                                        // Launch real Google Play Store updater flow or redirect to store details
-                                        val info = status.appUpdateInfo
-                                        if (activity != null) {
-                                            if (info != null && !status.isSimulation) {
-                                                updateHelper.launchRealUpdate(
-                                                    activity = activity,
-                                                    appUpdateInfo = info,
-                                                    launcher = updateLauncher,
-                                                    isFlexible = status.isFlexibleAllowed
-                                                )
-                                            } else {
-                                                updateHelper.openPlayStore(activity)
+                                    val activity = context as? Activity
+                                    val status = updateStatus as UpdateStatus.UpdateAvailable
+                                    Button(
+                                        onClick = {
+                                            val info = status.appUpdateInfo
+                                            if (activity != null) {
+                                                if (info != null && !status.isSimulation) {
+                                                    updateHelper.launchRealUpdate(
+                                                        activity = activity,
+                                                        appUpdateInfo = info,
+                                                        launcher = updateLauncher,
+                                                        isFlexible = status.isFlexibleAllowed
+                                                    )
+                                                } else {
+                                                    updateHelper.openPlayStore(activity)
+                                                }
                                             }
-                                        }
-                                        updateHelper.resetStatus()
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiary,
-                                        contentColor = MaterialTheme.colorScheme.onTertiary
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.testTag("update_now_button")
-                                ) {
-                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(Localizer.get("update_now", langCode), fontWeight = FontWeight.Bold)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        ),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.testTag("update_now_button")
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(Localizer.get("update_now", langCode), fontWeight = FontWeight.Bold)
+                                    }
+                                } else if (updateStatus is UpdateStatus.UpdateDownloaded) {
+                                    Button(
+                                        onClick = {
+                                            updateHelper.completeUpdate()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        ),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.testTag("install_update_button")
+                                    ) {
+                                        Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(if (langCode == "te") "ఇన్‌స్టాల్ చేయండి" else "Install & Restart", fontWeight = FontWeight.Bold)
+                                    }
+                                } else if (updateStatus is UpdateStatus.Downloading || updateStatus is UpdateStatus.Installing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        strokeWidth = 2.dp
+                                    )
                                 }
                             }
                         }
