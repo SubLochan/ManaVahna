@@ -8,11 +8,10 @@ import com.manavahana.data.preferences.UserPreferencesRepository
 import com.manavahana.data.repository.ManaVahanaRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
-import android.util.Base64
+import com.manavahana.util.BackupSecurity
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ManaVahanaViewModel(
@@ -451,41 +450,6 @@ class ManaVahanaViewModel(
         if (totalFuelConsumed > 0) totalDistance / totalFuelConsumed else 0.0
     }
 
-    private fun encryptBackup(plainText: String): String {
-        return try {
-            val keyBytes = "M4n4Vah4naS3cur3".toByteArray(Charsets.UTF_8)
-            val ivBytes = "M4n4Vah4naIv2026".toByteArray(Charsets.UTF_8)
-            val secretKey = SecretKeySpec(keyBytes, "AES")
-            val ivSpec = IvParameterSpec(ivBytes)
-            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
-            val encrypted = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
-            Base64.encodeToString(encrypted, Base64.DEFAULT)
-        } catch (e: Exception) {
-            plainText
-        }
-    }
-
-    private fun decryptBackup(encryptedText: String): String {
-        val trimmed = encryptedText.trim()
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-            return trimmed
-        }
-        return try {
-            val keyBytes = "M4n4Vah4naS3cur3".toByteArray(Charsets.UTF_8)
-            val ivBytes = "M4n4Vah4naIv2026".toByteArray(Charsets.UTF_8)
-            val secretKey = SecretKeySpec(keyBytes, "AES")
-            val ivSpec = IvParameterSpec(ivBytes)
-            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
-            val decoded = Base64.decode(trimmed, Base64.DEFAULT)
-            String(cipher.doFinal(decoded), Charsets.UTF_8)
-        } catch (e: Exception) {
-            // Fallback to plain text if decryption fails (e.g., if already plaintext)
-            encryptedText
-        }
-    }
-
     // Backup & Restore helpers
     private fun getLocalFileFromPath(context: android.content.Context, pathString: String?): java.io.File? {
         if (pathString.isNullOrBlank()) return null
@@ -506,7 +470,7 @@ class ManaVahanaViewModel(
         if (file == null || !file.exists()) return ""
         return try {
             val bytes = file.readBytes()
-            Base64.encodeToString(bytes, Base64.DEFAULT)
+            android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
         } catch (e: Exception) {
             e.printStackTrace()
             ""
@@ -520,7 +484,7 @@ class ManaVahanaViewModel(
             val fileName = cleanPath.substringAfterLast('/')
             if (fileName.isBlank()) return null
             val targetFile = java.io.File(context.filesDir, fileName)
-            val bytes = Base64.decode(base64Str, Base64.DEFAULT)
+            val bytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT)
             java.io.FileOutputStream(targetFile).use { fos ->
                 fos.write(bytes)
             }
@@ -547,12 +511,12 @@ class ManaVahanaViewModel(
     }
 
     // Backup & Restore
-    fun exportBackupJsonString(context: android.content.Context): String {
+    fun exportBackup(context: android.content.Context, password: String? = null): String {
         val root = org.json.JSONObject()
         root.put("appName", "ManaVahana")
-        root.put("version", 1)
+        root.put("version", 2)
         root.put("timestamp", System.currentTimeMillis())
-        
+
         val vehiclesArray = org.json.JSONArray()
         vehicles.value.forEach { v ->
             val item = org.json.JSONObject()
@@ -663,206 +627,231 @@ class ManaVahanaViewModel(
         root.put("reminders", reminderArray)
 
         val plainJson = root.toString(2)
-        return encryptBackup(plainJson)
+        return if (!password.isNullOrBlank()) {
+            BackupSecurity.encrypt(plainJson, password)
+        } else {
+            plainJson
+        }
     }
 
-    fun importBackupJson(context: android.content.Context, jsonString: String): Boolean {
-        return try {
-            val decryptedJson = decryptBackup(jsonString.trim())
+    fun exportBackupJsonString(context: android.content.Context): String = exportBackup(context, null)
+
+    fun inspectBackup(content: String): BackupSecurity.BackupType = BackupSecurity.inspect(content)
+
+    suspend fun restoreBackupData(
+        context: android.content.Context,
+        content: String,
+        password: String? = null
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val decryptedJson = if (!password.isNullOrBlank()) {
+                BackupSecurity.decrypt(content.trim(), password)
+            } else {
+                val type = BackupSecurity.inspect(content.trim())
+                if (type is BackupSecurity.BackupType.EncryptedV2) {
+                    return@withContext Result.failure(IllegalArgumentException("PASSWORD_REQUIRED"))
+                }
+                BackupSecurity.decrypt(content.trim(), "")
+            }
+
             val root = org.json.JSONObject(decryptedJson)
             if (!root.has("appName") || root.getString("appName") != "ManaVahana") {
-                return false
+                return@withContext Result.failure(IllegalArgumentException("INVALID_FORMAT"))
             }
-            
-            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    // Clear existing lists to avoid duplicates
-                    vehicles.value.forEach { repository.deleteVehicle(it) }
-                    allServiceLogs.value.forEach { repository.deleteServiceLog(it) }
-                    allFuelLogs.value.forEach { repository.deleteFuelLog(it) }
-                    allExpenses.value.forEach { repository.deleteExpense(it) }
-                    allDocuments.value.forEach { repository.deleteDocument(it) }
-                    allReminders.value.forEach { repository.deleteReminder(it) }
 
-                    val idMap = mutableMapOf<Int, Int>()
+            // Clear existing lists to avoid duplicates
+            vehicles.value.forEach { repository.deleteVehicle(it) }
+            allServiceLogs.value.forEach { repository.deleteServiceLog(it) }
+            allFuelLogs.value.forEach { repository.deleteFuelLog(it) }
+            allExpenses.value.forEach { repository.deleteExpense(it) }
+            allDocuments.value.forEach { repository.deleteDocument(it) }
+            allReminders.value.forEach { repository.deleteReminder(it) }
 
-                    // 1. Insert Vehicles
-                    val vehiclesArray = root.optJSONArray("vehicles")
-                    if (vehiclesArray != null) {
-                        for (i in 0 until vehiclesArray.length()) {
-                            val obj = vehiclesArray.getJSONObject(i)
-                            val oldId = obj.optInt("id", 0)
-                            val originalImg = obj.optString("vehicleImage", "")
-                            val base64Img = obj.optString("vehicleImage_base64", "")
-                            var restoredImgPath = originalImg
-                            if (base64Img.isNotEmpty()) {
-                                val newPath = base64ToFile(context, base64Img, originalImg)
-                                if (newPath != null) {
-                                    restoredImgPath = newPath
-                                }
-                            } else if (originalImg.startsWith("file://") || originalImg.contains("/files/")) {
-                                val resolvedFile = getResolutionFile(context, originalImg)
-                                if (resolvedFile != null) {
-                                    restoredImgPath = "file://${resolvedFile.absolutePath}"
-                                }
-                            }
-                            val v = Vehicle(
-                                id = 0,
-                                vehicleName = obj.optString("vehicleName", ""),
-                                vehicleNumber = obj.optString("vehicleNumber", ""),
-                                brand = obj.optString("brand", ""),
-                                model = obj.optString("model", ""),
-                                vehicleType = obj.optString("vehicleType", "Car"),
-                                fuelType = obj.optString("fuelType", "Petrol"),
-                                purchaseDate = obj.optLong("purchaseDate", 0L),
-                                insuranceExpiry = obj.optLong("insuranceExpiry", 0L),
-                                pollutionExpiry = obj.optLong("pollutionExpiry", 0L),
-                                vehicleImage = if (restoredImgPath.isEmpty()) null else restoredImgPath
-                            )
-                            val newId = repository.insertVehicle(v).toInt()
-                            if (oldId > 0) {
-                                idMap[oldId] = newId
-                            }
+            val idMap = mutableMapOf<Int, Int>()
+            var insertedVehicles = 0
+
+            // 1. Insert Vehicles
+            val vehiclesArray = root.optJSONArray("vehicles")
+            if (vehiclesArray != null) {
+                for (i in 0 until vehiclesArray.length()) {
+                    val obj = vehiclesArray.getJSONObject(i)
+                    val oldId = obj.optInt("id", 0)
+                    val originalImg = obj.optString("vehicleImage", "")
+                    val base64Img = obj.optString("vehicleImage_base64", "")
+                    var restoredImgPath = originalImg
+                    if (base64Img.isNotEmpty()) {
+                        val newPath = base64ToFile(context, base64Img, originalImg)
+                        if (newPath != null) {
+                            restoredImgPath = newPath
+                        }
+                    } else if (originalImg.startsWith("file://") || originalImg.contains("/files/")) {
+                        val resolvedFile = getResolutionFile(context, originalImg)
+                        if (resolvedFile != null) {
+                            restoredImgPath = "file://${resolvedFile.absolutePath}"
                         }
                     }
-
-                    // 2. Insert Service Logs
-                    val serviceArray = root.optJSONArray("serviceLogs")
-                    if (serviceArray != null) {
-                        for (i in 0 until serviceArray.length()) {
-                            val obj = serviceArray.getJSONObject(i)
-                            val oldVehicleId = obj.optInt("vehicleId", 0)
-                            val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
-                            val originalBill = obj.optString("billPhoto", "")
-                            val base64Bill = obj.optString("billPhoto_base64", "")
-                            var restoredBillPath = originalBill
-                            if (base64Bill.isNotEmpty()) {
-                                val newPath = base64ToFile(context, base64Bill, originalBill)
-                                if (newPath != null) {
-                                    restoredBillPath = newPath
-                                }
-                            } else if (originalBill.startsWith("file://") || originalBill.contains("/files/")) {
-                                val resolvedFile = getResolutionFile(context, originalBill)
-                                if (resolvedFile != null) {
-                                    restoredBillPath = "file://${resolvedFile.absolutePath}"
-                                }
-                            }
-                            val s = ServiceLog(
-                                id = 0,
-                                vehicleId = newVehicleId,
-                                serviceDate = obj.optLong("serviceDate", 0L),
-                                odometerReading = obj.optDouble("odometerReading", 0.0),
-                                serviceType = obj.optString("serviceType", "General"),
-                                serviceCenter = obj.optString("serviceCenter", ""),
-                                cost = obj.optDouble("cost", 0.0),
-                                notes = obj.optString("notes", ""),
-                                nextServiceDate = obj.optLong("nextServiceDate", 0L),
-                                billPhoto = if (restoredBillPath.isEmpty()) null else restoredBillPath
-                            )
-                            repository.insertServiceLog(s)
-                        }
+                    val v = Vehicle(
+                        id = 0,
+                        vehicleName = obj.optString("vehicleName", ""),
+                        vehicleNumber = obj.optString("vehicleNumber", ""),
+                        brand = obj.optString("brand", ""),
+                        model = obj.optString("model", ""),
+                        vehicleType = obj.optString("vehicleType", "Car"),
+                        fuelType = obj.optString("fuelType", "Petrol"),
+                        purchaseDate = obj.optLong("purchaseDate", 0L),
+                        insuranceExpiry = obj.optLong("insuranceExpiry", 0L),
+                        pollutionExpiry = obj.optLong("pollutionExpiry", 0L),
+                        vehicleImage = if (restoredImgPath.isEmpty()) null else restoredImgPath
+                    )
+                    val newId = repository.insertVehicle(v).toInt()
+                    insertedVehicles++
+                    if (oldId > 0) {
+                        idMap[oldId] = newId
                     }
-
-                    // 3. Insert Fuel Logs
-                    val fuelArray = root.optJSONArray("fuelLogs")
-                    if (fuelArray != null) {
-                        for (i in 0 until fuelArray.length()) {
-                            val obj = fuelArray.getJSONObject(i)
-                            val oldVehicleId = obj.optInt("vehicleId", 0)
-                            val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
-                            val f = FuelLog(
-                                id = 0,
-                                vehicleId = newVehicleId,
-                                fuelDate = obj.optLong("fuelDate", 0L),
-                                litersFilled = obj.optDouble("litersFilled", 0.0),
-                                pricePerLiter = obj.optDouble("pricePerLiter", 0.0),
-                                totalAmount = obj.optDouble("totalAmount", 0.0),
-                                odometerReading = obj.optDouble("odometerReading", 0.0),
-                                fuelStationName = obj.optString("fuelStationName", "")
-                            )
-                            repository.insertFuelLog(f)
-                        }
-                    }
-
-                    // 4. Insert Expenses
-                    val expenseArray = root.optJSONArray("expenses")
-                    if (expenseArray != null) {
-                        for (i in 0 until expenseArray.length()) {
-                            val obj = expenseArray.getJSONObject(i)
-                            val oldVehicleId = obj.optInt("vehicleId", 0)
-                            val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
-                            val e = Expense(
-                                id = 0,
-                                vehicleId = newVehicleId,
-                                expenseDate = obj.optLong("expenseDate", 0L),
-                                category = obj.optString("category", "General"),
-                                amount = obj.optDouble("amount", 0.0),
-                                notes = obj.optString("notes", "")
-                            )
-                            repository.insertExpense(e)
-                        }
-                    }
-
-                    // 5. Insert Documents
-                    val docArray = root.optJSONArray("documents")
-                    if (docArray != null) {
-                        for (i in 0 until docArray.length()) {
-                            val obj = docArray.getJSONObject(i)
-                            val oldVehicleId = obj.optInt("vehicleId", 0)
-                            val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
-                            val originalDoc = obj.optString("documentPath", "")
-                            val base64Doc = obj.optString("documentPath_base64", "")
-                            var restoredDocPath = originalDoc
-                            if (base64Doc.isNotEmpty()) {
-                                val newPath = base64ToFile(context, base64Doc, originalDoc)
-                                if (newPath != null) {
-                                    restoredDocPath = newPath
-                                }
-                            } else if (originalDoc.startsWith("file://") || originalDoc.contains("/files/")) {
-                                val resolvedFile = getResolutionFile(context, originalDoc)
-                                if (resolvedFile != null) {
-                                    restoredDocPath = "file://${resolvedFile.absolutePath}"
-                                }
-                            }
-                            val d = Document(
-                                id = 0,
-                                vehicleId = newVehicleId,
-                                docType = obj.optString("docType", "RC"),
-                                title = obj.optString("title", ""),
-                                expiryDate = obj.optLong("expiryDate", 0L).let { if (it == 0L) null else it },
-                                documentPath = if (restoredDocPath.isEmpty()) null else restoredDocPath,
-                                isEncrypted = obj.optBoolean("isEncrypted", false)
-                            )
-                            repository.insertDocument(d)
-                        }
-                    }
-
-                    // 6. Insert Reminders
-                    val reminderArray = root.optJSONArray("reminders")
-                    if (reminderArray != null) {
-                        for (i in 0 until reminderArray.length()) {
-                            val obj = reminderArray.getJSONObject(i)
-                            val oldVehicleId = obj.optInt("vehicleId", -1)
-                            val newVehicleId = if (oldVehicleId != -1) (idMap[oldVehicleId] ?: oldVehicleId) else null
-                            val r = Reminder(
-                                id = 0,
-                                vehicleId = newVehicleId,
-                                title = obj.optString("title", ""),
-                                description = obj.optString("description", ""),
-                                reminderDate = obj.optLong("reminderDate", 0L),
-                                isCompleted = obj.optBoolean("isCompleted", false),
-                                category = obj.optString("category", "General")
-                            )
-                            repository.insertReminder(r)
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
             }
-            true
+
+            // 2. Insert Service Logs
+            val serviceArray = root.optJSONArray("serviceLogs")
+            if (serviceArray != null) {
+                for (i in 0 until serviceArray.length()) {
+                    val obj = serviceArray.getJSONObject(i)
+                    val oldVehicleId = obj.optInt("vehicleId", 0)
+                    val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
+                    val originalBill = obj.optString("billPhoto", "")
+                    val base64Bill = obj.optString("billPhoto_base64", "")
+                    var restoredBillPath = originalBill
+                    if (base64Bill.isNotEmpty()) {
+                        val newPath = base64ToFile(context, base64Bill, originalBill)
+                        if (newPath != null) {
+                            restoredBillPath = newPath
+                        }
+                    } else if (originalBill.startsWith("file://") || originalBill.contains("/files/")) {
+                        val resolvedFile = getResolutionFile(context, originalBill)
+                        if (resolvedFile != null) {
+                            restoredBillPath = "file://${resolvedFile.absolutePath}"
+                        }
+                    }
+                    val s = ServiceLog(
+                        id = 0,
+                        vehicleId = newVehicleId,
+                        serviceDate = obj.optLong("serviceDate", 0L),
+                        odometerReading = obj.optDouble("odometerReading", 0.0),
+                        serviceType = obj.optString("serviceType", "General"),
+                        serviceCenter = obj.optString("serviceCenter", ""),
+                        cost = obj.optDouble("cost", 0.0),
+                        notes = obj.optString("notes", ""),
+                        nextServiceDate = obj.optLong("nextServiceDate", 0L),
+                        billPhoto = if (restoredBillPath.isEmpty()) null else restoredBillPath
+                    )
+                    repository.insertServiceLog(s)
+                }
+            }
+
+            // 3. Insert Fuel Logs
+            val fuelArray = root.optJSONArray("fuelLogs")
+            if (fuelArray != null) {
+                for (i in 0 until fuelArray.length()) {
+                    val obj = fuelArray.getJSONObject(i)
+                    val oldVehicleId = obj.optInt("vehicleId", 0)
+                    val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
+                    val f = FuelLog(
+                        id = 0,
+                        vehicleId = newVehicleId,
+                        fuelDate = obj.optLong("fuelDate", 0L),
+                        litersFilled = obj.optDouble("litersFilled", 0.0),
+                        pricePerLiter = obj.optDouble("pricePerLiter", 0.0),
+                        totalAmount = obj.optDouble("totalAmount", 0.0),
+                        odometerReading = obj.optDouble("odometerReading", 0.0),
+                        fuelStationName = obj.optString("fuelStationName", "")
+                    )
+                    repository.insertFuelLog(f)
+                }
+            }
+
+            // 4. Insert Expenses
+            val expenseArray = root.optJSONArray("expenses")
+            if (expenseArray != null) {
+                for (i in 0 until expenseArray.length()) {
+                    val obj = expenseArray.getJSONObject(i)
+                    val oldVehicleId = obj.optInt("vehicleId", 0)
+                    val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
+                    val e = Expense(
+                        id = 0,
+                        vehicleId = newVehicleId,
+                        expenseDate = obj.optLong("expenseDate", 0L),
+                        category = obj.optString("category", "General"),
+                        amount = obj.optDouble("amount", 0.0),
+                        notes = obj.optString("notes", "")
+                    )
+                    repository.insertExpense(e)
+                }
+            }
+
+            // 5. Insert Documents
+            val docArray = root.optJSONArray("documents")
+            if (docArray != null) {
+                for (i in 0 until docArray.length()) {
+                    val obj = docArray.getJSONObject(i)
+                    val oldVehicleId = obj.optInt("vehicleId", 0)
+                    val newVehicleId = idMap[oldVehicleId] ?: oldVehicleId
+                    val originalDoc = obj.optString("documentPath", "")
+                    val base64Doc = obj.optString("documentPath_base64", "")
+                    var restoredDocPath = originalDoc
+                    if (base64Doc.isNotEmpty()) {
+                        val newPath = base64ToFile(context, base64Doc, originalDoc)
+                        if (newPath != null) {
+                            restoredDocPath = newPath
+                        }
+                    } else if (originalDoc.startsWith("file://") || originalDoc.contains("/files/")) {
+                        val resolvedFile = getResolutionFile(context, originalDoc)
+                        if (resolvedFile != null) {
+                            restoredDocPath = "file://${resolvedFile.absolutePath}"
+                        }
+                    }
+                    val d = Document(
+                        id = 0,
+                        vehicleId = newVehicleId,
+                        docType = obj.optString("docType", "RC"),
+                        title = obj.optString("title", ""),
+                        expiryDate = obj.optLong("expiryDate", 0L).let { if (it == 0L) null else it },
+                        documentPath = if (restoredDocPath.isEmpty()) null else restoredDocPath,
+                        isEncrypted = obj.optBoolean("isEncrypted", false)
+                    )
+                    repository.insertDocument(d)
+                }
+            }
+
+            // 6. Insert Reminders
+            val reminderArray = root.optJSONArray("reminders")
+            if (reminderArray != null) {
+                for (i in 0 until reminderArray.length()) {
+                    val obj = reminderArray.getJSONObject(i)
+                    val oldVehicleId = obj.optInt("vehicleId", -1)
+                    val newVehicleId = if (oldVehicleId != -1) (idMap[oldVehicleId] ?: oldVehicleId) else null
+                    val r = Reminder(
+                        id = 0,
+                        vehicleId = newVehicleId,
+                        title = obj.optString("title", ""),
+                        description = obj.optString("description", ""),
+                        reminderDate = obj.optLong("reminderDate", 0L),
+                        isCompleted = obj.optBoolean("isCompleted", false),
+                        category = obj.optString("category", "General")
+                    )
+                    repository.insertReminder(r)
+                }
+            }
+
+            Result.success(insertedVehicles)
+        } catch (e: javax.crypto.AEADBadTagException) {
+            Result.failure(IllegalArgumentException("WRONG_PASSWORD"))
         } catch (e: Exception) {
-            false
+            val msg = e.message ?: ""
+            if (msg.contains("bad tag", ignoreCase = true) || msg.contains("mac check failed", ignoreCase = true) || msg.contains("pad block corrupted", ignoreCase = true)) {
+                Result.failure(IllegalArgumentException("WRONG_PASSWORD"))
+            } else {
+                Result.failure(e)
+            }
         }
     }
 }
