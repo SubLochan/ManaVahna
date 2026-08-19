@@ -10,14 +10,14 @@ plugins {
 android {
   namespace = "com.manavahana"
   compileSdk = 36
-//  ndkVersion = "25.1.8937393"
+  ndkVersion = "25.1.8937393"
 
   defaultConfig {
     applicationId = "com.Lochan.ManaVahana"
     minSdk = 24
     targetSdk = 36
-    versionCode = 23
-    versionName = "3.0"
+    versionCode = 26
+    versionName = "3.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

@@ -2,7 +2,7 @@ package com.example
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
-import com.example.ui.theme.ManaVahanaTheme
+import com.manavahana.ui.theme.ManaVahanaTheme
 import androidx.compose.material3.Text
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
