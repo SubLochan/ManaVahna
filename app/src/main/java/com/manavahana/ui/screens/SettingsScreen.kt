@@ -44,6 +44,7 @@ import com.manavahana.ui.pdf.PdfGenerator
 import com.manavahana.ui.AppUpdateHelper
 import com.manavahana.ui.UpdateStatus
 import com.manavahana.ui.Localizer
+import com.manavahana.util.BackupCryptoHelper
 
 @Composable
 fun SettingsScreen(
@@ -67,19 +68,28 @@ fun SettingsScreen(
     val reminders by viewModel.allReminders.collectAsState()
     val allDocuments by viewModel.allDocuments.collectAsState()
 
-    var pendingImportJsonString by remember { mutableStateOf("") }
+    var pendingImportFileContent by remember { mutableStateOf("") }
+    var pendingDecryptedJsonToRestore by remember { mutableStateOf("") }
+    var showImportPasswordDialog by remember { mutableStateOf(false) }
+    var importPasswordInput by remember { mutableStateOf("") }
+    var importPasswordVisible by remember { mutableStateOf(false) }
+    var importPasswordError by remember { mutableStateOf("") }
+
+    var activeExportPassword by remember { mutableStateOf("") }
+    var showExportPasswordDialog by remember { mutableStateOf(false) }
+    var isDirectShareMode by remember { mutableStateOf(false) }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
 
     val exportJsonLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
-        if (uri != null) {
+        if (uri != null && activeExportPassword.isNotBlank()) {
             try {
-                val jsonString = viewModel.exportBackupJsonString(context)
+                val jsonString = viewModel.exportBackupJsonString(context, activeExportPassword)
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                     outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
                 }
-                Toast.makeText(context, "Backup JSON file saved successfully!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Encrypted Backup JSON saved successfully!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 e.printStackTrace()
                 Toast.makeText(context, "Failed to save backup file: ${e.message}", Toast.LENGTH_LONG).show()
@@ -93,10 +103,13 @@ fun SettingsScreen(
         if (uri != null) {
             try {
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val jsonString = inputStream.bufferedReader().use { it.readText() }
-                    if (jsonString.isNotBlank()) {
-                        pendingImportJsonString = jsonString
-                        showImportConfirmDialog = true
+                    val fileContent = inputStream.bufferedReader().use { it.readText() }
+                    if (fileContent.isNotBlank()) {
+                        pendingImportFileContent = fileContent
+                        importPasswordInput = ""
+                        importPasswordError = ""
+                        importPasswordVisible = false
+                        showImportPasswordDialog = true
                     } else {
                         Toast.makeText(context, "Selected backup file is empty.", Toast.LENGTH_SHORT).show()
                     }
@@ -110,6 +123,7 @@ fun SettingsScreen(
 
     var showPdfSuccessDialog by remember { mutableStateOf(false) }
     var generatedPdfUri by remember { mutableStateOf<Uri?>(null) }
+    var showDownloadOldReportsDialog by remember { mutableStateOf(false) }
 
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showPinDeactivateDialog by remember { mutableStateOf(false) }
@@ -358,6 +372,11 @@ fun SettingsScreen(
             }
         }
 
+        // Home Screen Fuel Expense & Clock Widget Card
+        item {
+            HomeScreenWidgetCard(viewModel = viewModel)
+        }
+
         // Backup, Restore & PDF Reports Card
         item {
             Card(
@@ -367,7 +386,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Backup & Export Tools", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    
+
                     Text("Local Backup & Restore", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                     Text(
                         "ManaVahana is 100% offline-first. Save all your vehicles, logs, expenses, docs, and reminders as a local JSON file, or restore data instantly by choosing a local backup file.",
@@ -381,13 +400,9 @@ fun SettingsScreen(
                     ) {
                         Button(
                             onClick = {
-                                try {
-                                    val backupFileName = "ManaVahana_Backup.json"
-                                    exportJsonLauncher.launch(backupFileName)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    Toast.makeText(context, "Storage picker unavailable. Failed to launch backup.", Toast.LENGTH_LONG).show()
-                                }
+                                activeExportPassword = viewModel.generateRandomBackupPassword()
+                                isDirectShareMode = false
+                                showExportPasswordDialog = true
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
@@ -417,31 +432,9 @@ fun SettingsScreen(
 
                     Button(
                         onClick = {
-                            try {
-                                val jsonString = viewModel.exportBackupJsonString(context)
-                                val backupDir = java.io.File(context.cacheDir, "backups")
-                                if (!backupDir.exists()) backupDir.mkdirs()
-                                val backupFileName = "ManaVahana_Backup.json"
-                                val backupFile = java.io.File(backupDir, backupFileName)
-                                backupFile.writeText(jsonString, Charsets.UTF_8)
-                                val backupUri = androidx.core.content.FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.provider",
-                                    backupFile
-                                )
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "application/json"
-                                    putExtra(Intent.EXTRA_STREAM, backupUri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                val chooserIntent = Intent.createChooser(intent, "మిత్రులతో పంచుకోండి (Share Backup File)").apply {
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(chooserIntent)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                Toast.makeText(context, "Failed to share backup file: ${e.message}", Toast.LENGTH_LONG).show()
-                            }
+                            activeExportPassword = viewModel.generateRandomBackupPassword()
+                            isDirectShareMode = true
+                            showExportPasswordDialog = true
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -487,6 +480,18 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Generate & Share PDF Report")
                     }
+
+                    OutlinedButton(
+                        onClick = { showDownloadOldReportsDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_settings_monthly_reports"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (langCode == "te") "నెలలవారీ పాత నివేదికలు డౌన్‌లోడ్ (PDF)" else "Download Monthly / Past Reports (PDF)")
+                    }
                 }
             }
         }
@@ -521,17 +526,11 @@ fun SettingsScreen(
                 packageInfo?.versionCode?.toLong() ?: 1L
             }
 
-            val currentPlayStoreVersion = overriddenPlayStoreVersion ?: livePlayStoreVersion
-            val dynamicCurrentVersion = remember(currentPlayStoreVersion, installedVersionName) {
-                if (currentPlayStoreVersion.isNotEmpty() && 
-                    currentPlayStoreVersion != "Retrieving..." && 
-                    currentPlayStoreVersion != "Not checked yet") {
-                    com.manavahana.ui.PlayStoreVersionFetcher.getLowerVersion(currentPlayStoreVersion)
-                } else {
-                    installedVersionName
-                }
+            val currentPlayStoreVersion: String = when {
+                livePlayStoreVersion.isNotBlank() && livePlayStoreVersion != "Not checked yet" -> livePlayStoreVersion
+                else -> "Fetching from Play Store..."
             }
-            val currentAppVersion = overriddenAppVersion ?: dynamicCurrentVersion
+            val currentAppVersion: String = installedVersionName
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -553,21 +552,24 @@ fun SettingsScreen(
                     }
 
                     Text(
-                        text = "ManaVahana matches your device Play Store configuration. Keep track of immediate or flexible releases and verify schema structures are completely preserved.",
+                        text = "ManaVahana connects directly to Google Play Store to fetch and notify you about new releases and feature updates.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
 
                     // Display current update status text
-                    val currentStatusText = when (updateState) {
-                        is UpdateStatus.Idle -> "No update checking has run yet."
-                        is UpdateStatus.Checking -> "Checking Google Play Store for active rolls..."
+                    val currentStatusText = when (val status = updateState) {
+                        is UpdateStatus.Idle -> "No update check performed yet."
+                        is UpdateStatus.Checking -> "Checking Google Play Store for active releases..."
                         is UpdateStatus.UpToDate -> "ManaVahana is completely up to date!"
                         is UpdateStatus.UpdateAvailable -> {
-                            val info = updateState as UpdateStatus.UpdateAvailable
-                            "Update Available! New Version Code: ${info.versionCode} ${if (info.isSimulation) "(SIMULATION)" else ""}"
+                            val ver = if (status.versionName.isNotBlank()) " (v${status.versionName})" else ""
+                            "New update available$ver on Google Play Store!"
                         }
-                        is UpdateStatus.Error -> "Store check failed: ${(updateState as UpdateStatus.Error).message}"
+                        is UpdateStatus.Downloading -> "Downloading update from Google Play..."
+                        is UpdateStatus.UpdateDownloaded -> "Update Downloaded! Ready to install & restart."
+                        is UpdateStatus.Installing -> "Installing latest update package..."
+                        is UpdateStatus.Error -> "Store check notice: ${status.message}"
                     }
 
                     Surface(
@@ -651,46 +653,36 @@ fun SettingsScreen(
                         }
                     }
 
-                    Row(
+                    Button(
+                        onClick = { updateHelper.checkForUpdates(forceNotification = true) },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Button(
-                            onClick = { updateHelper.checkForUpdates(forceNotification = true) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Check Updates", fontSize = 11.sp)
-                        }
-
-                        OutlinedButton(
-                            onClick = { updateHelper.triggerSimulation(isFlexible = true) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.Duo, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Simulate Release", fontSize = 11.sp)
-                        }
+                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Check Updates", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
 
-                    if (updateState is UpdateStatus.UpdateAvailable) {
+                    if (updateState is UpdateStatus.UpdateDownloaded) {
                         Button(
-                            onClick = { updateHelper.resetStatus() },
+                            onClick = {
+                                viewModel.updateSimulatedAppVersion(currentPlayStoreVersion)
+                                updateHelper.completeUpdate()
+                            },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Reset Update Status Tracker", fontSize = 12.sp)
+                            Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Install Update & Restart App", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
         }
 
-        // Reminders & Document Expiration Notification Console
+        // Reminders & Document Expiration Notification Info
         item {
             Card(
                 modifier = Modifier.fillMaxWidth().testTag("reminders_notification_console_card"),
@@ -716,29 +708,11 @@ fun SettingsScreen(
                     }
 
                     Text(
-                        text = "ManaVahana schedules secure background tasks to parse your vehicle insurance, pollution certificates, and personal document vaults. Get warned instantly on your status bar for upcoming dates and overdue tasks completely offline.",
+                        text = "ManaVahana automatically checks vehicle insurance, pollution certificates, and personal document vaults in the background. You will receive notifications for upcoming dates and overdue tasks completely offline.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
                         lineHeight = 18.sp
                     )
-
-                    Button(
-                        onClick = {
-                            try {
-                                val request = androidx.work.OneTimeWorkRequestBuilder<com.manavahana.worker.ReminderWorker>().build()
-                                androidx.work.WorkManager.getInstance(context).enqueue(request)
-                                Toast.makeText(context, "Scanning document expiry states & publishing alerts...", Toast.LENGTH_SHORT).show()
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Trigger Expiration Scan & Alerts")
-                    }
                 }
             }
         }
@@ -766,7 +740,7 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
                     )
-                    
+
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         TeluguBullet("కుంకుమ బొట్టు (Kumkuma) Red", "Represents protection, visual highlight, and festive identity.")
                         TeluguBullet("పసుపు తోరణం (Turmeric) Gold", "Represents auspicious beginnings, longevity, and bright visual safety.")
@@ -782,16 +756,328 @@ fun SettingsScreen(
         }
     }
 
+    if (showExportPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showExportPasswordDialog = false
+            },
+            icon = {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = if (langCode == "te") "యాదృచ్ఛిక పాస్‌వర్డ్ ఎన్‌క్రిప్షన్" else "Encrypted Backup Password",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = if (langCode == "te")
+                            "బ్యాకప్ ఫైల్ భద్రత కోసం తప్పనిసరిగా పాస్‌వర్డ్‌తో ఎన్‌క్రిప్ట్ చేయబడుతుంది. దిగువ రూపొందించబడిన యాదృచ్ఛిక పాస్‌వర్డ్‌ను తప్పనిసరిగా కాపీ చేయండి లేదా భద్రపరచండి. భవిష్యత్తులో డేటాను పునరుద్ధరించడానికి ఇది అవసరం!"
+                        else
+                            "Backups are mandatorily encrypted with a secure random password. Please copy or save this generated password. You will need it to import and restore your data later!",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (langCode == "te") "జనరేట్ చేసిన పాస్‌వర్డ్" else "Generated Password",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = activeExportPassword,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    activeExportPassword = viewModel.generateRandomBackupPassword()
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = "Regenerate Password",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            val clip = ClipData.newPlainText("ManaVahana Backup Password", activeExportPassword)
+                            clipboard?.setPrimaryClip(clip)
+                            Toast.makeText(context, if (langCode == "te") "పాస్‌వర్డ్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది!" else "Password copied to clipboard!", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (langCode == "te") "పాస్‌వర్డ్ కాపీ చేయండి" else "Copy Password to Clipboard")
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        Text(
+                            text = if (langCode == "te")
+                                "ముఖ్య గమనిక: ఈ పాస్‌వర్డ్ లేకుండా బ్యాకప్ రీస్టోర్ చేయలేరు."
+                            else
+                                "Important: Without this password, this backup file cannot be restored.",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExportPasswordDialog = false
+                        if (isDirectShareMode) {
+                            try {
+                                val jsonString = viewModel.exportBackupJsonString(context, activeExportPassword)
+                                val backupDir = java.io.File(context.cacheDir, "backups")
+                                if (!backupDir.exists()) backupDir.mkdirs()
+                                val backupFileName = "ManaVahana_Backup.json"
+                                val backupFile = java.io.File(backupDir, backupFileName)
+                                backupFile.writeText(jsonString, Charsets.UTF_8)
+                                val backupUri = androidx.core.content.FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.provider",
+                                    backupFile
+                                )
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, backupUri)
+                                    putExtra(Intent.EXTRA_SUBJECT, "ManaVahana Encrypted Backup")
+                                    putExtra(Intent.EXTRA_TEXT, "Here is my encrypted ManaVahana backup file. Decryption Password: $activeExportPassword")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                val chooserIntent = Intent.createChooser(intent, if (langCode == "te") "మిత్రులతో పంచుకోండి (Share Backup File)" else "Share Backup File").apply {
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(chooserIntent)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "Failed to share backup file: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            try {
+                                val backupFileName = "ManaVahana_Backup.json"
+                                exportJsonLauncher.launch(backupFileName)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "Storage picker unavailable.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(if (isDirectShareMode) Icons.Default.Share else Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (isDirectShareMode) (if (langCode == "te") "ఎన్‌క్రిప్ట్ చేసి షేర్ చేయండి" else "Share Encrypted Backup") else (if (langCode == "te") "ఎగుమతి చేయండి" else "Export File"))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showExportPasswordDialog = false
+                    }
+                ) {
+                    Text(if (langCode == "te") "రద్దు చేయండి" else "Cancel")
+                }
+            }
+        )
+    }
+
+    if (showImportPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showImportPasswordDialog = false
+                pendingImportFileContent = ""
+                importPasswordInput = ""
+                importPasswordError = ""
+            },
+            icon = {
+                Icon(
+                    Icons.Default.LockOpen,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = if (langCode == "te") "బ్యాకప్ పాస్‌వర్డ్ నమోదు చేయండి" else "Enter Backup Password",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (langCode == "te")
+                            "ఎంచుకున్న బ్యాకప్ ఫైల్ పాస్‌వర్డ్ ద్వారా రక్షించబడింది. డేటాను డీక్రిప్ట్ చేసి పునరుద్ధరించడానికి దయచేసి ఎగుమతి చేసినప్పుడు అందించిన పాస్‌వర్డ్‌ను నమోదు చేయండి."
+                        else
+                            "This backup file is encrypted. Please enter the password that was generated when this backup was exported to decrypt your vehicles and records.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+
+                    OutlinedTextField(
+                        value = importPasswordInput,
+                        onValueChange = {
+                            importPasswordInput = it
+                            if (importPasswordError.isNotEmpty()) {
+                                importPasswordError = ""
+                            }
+                        },
+                        label = { Text(if (langCode == "te") "పాస్‌వర్డ్" else "Backup Password") },
+                        placeholder = { Text(if (langCode == "te") "పాస్‌వర్డ్ నమోదు చేయండి" else "Enter password") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (importPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            IconButton(onClick = { importPasswordVisible = !importPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (importPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (importPasswordVisible) "Hide password" else "Show password"
+                                )
+                            }
+                        },
+                        isError = importPasswordError.isNotEmpty(),
+                        supportingText = if (importPasswordError.isNotEmpty()) {
+                            {
+                                Text(
+                                    text = importPasswordError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        } else null
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (importPasswordInput.isBlank()) {
+                            importPasswordError = if (langCode == "te") "దయచేసి పాస్‌వర్డ్ నమోదు చేయండి" else "Please enter the backup password."
+                            return@Button
+                        }
+                        val decryptResult = viewModel.decryptBackupPayload(pendingImportFileContent, importPasswordInput.trim())
+                        when (decryptResult) {
+                            is BackupCryptoHelper.DecryptResult.Success -> {
+                                pendingDecryptedJsonToRestore = decryptResult.plainJson
+                                showImportPasswordDialog = false
+                                showImportConfirmDialog = true
+                            }
+                            is BackupCryptoHelper.DecryptResult.InvalidPassword -> {
+                                importPasswordError = if (langCode == "te")
+                                    "తప్పుడు పాస్‌వర్డ్! దయచేసి సరైన పాస్‌వర్డ్‌ను నమోదు చేయండి."
+                                else
+                                    "Incorrect password! Decryption failed. Please enter the valid password used during export."
+                            }
+                            is BackupCryptoHelper.DecryptResult.Error -> {
+                                importPasswordError = decryptResult.message
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (langCode == "te") "ధృవీకరించండి & డీక్రిప్ట్ చేయండి" else "Decrypt & Verify")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImportPasswordDialog = false
+                        pendingImportFileContent = ""
+                        importPasswordInput = ""
+                        importPasswordError = ""
+                    }
+                ) {
+                    Text(if (langCode == "te") "రద్దు చేయండి" else "Cancel")
+                }
+            }
+        )
+    }
+
     if (showImportConfirmDialog) {
         AlertDialog(
             onDismissRequest = {
                 showImportConfirmDialog = false
-                pendingImportJsonString = ""
+                pendingDecryptedJsonToRestore = ""
+                pendingImportFileContent = ""
             },
-            title = { Text("Confirm Data Overwrite") },
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = if (langCode == "te") "డేటా భర్తీ నిర్ధారణ" else "Confirm Data Overwrite",
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
                 Text(
-                    "WARNING: Restoring this local JSON file will completely replace all currently registered vehicles, fuel logs, service details, secure documents, and active reminders on this device! This offline operation cannot be undone.\n\nAre you sure you want to proceed and overwrite everything?",
+                    text = if (langCode == "te")
+                        "హెచ్చరిక: ఈ బ్యాకప్ ఫైల్‌ను పునరుద్ధరించడం వలన ప్రస్తుత పరికరంలోని అన్ని వాహనాలు, సర్వీస్ లాగ్‌లు, ఇంధన రికార్డులు, పత్రాలు మరియు రిమైండర్‌లు భర్తీ చేయబడతాయి. ఈ ఆఫ్‌లైన్ ఆపరేషన్‌ను రద్దు చేయలేము.\n\nమీరు కొనసాగించి డేటాను పునరుద్ధరించాలనుకుంటున్నారా?"
+                    else
+                        "WARNING: Restoring this backup will completely replace all currently registered vehicles, fuel logs, service details, documents, and active reminders on this device! This operation cannot be undone.\n\nAre you sure you want to proceed and overwrite everything?",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -799,28 +1085,31 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val success = viewModel.importBackupJson(context, pendingImportJsonString)
+                        val success = viewModel.restoreBackupJson(context, pendingDecryptedJsonToRestore)
                         if (success) {
-                            Toast.makeText(context, "Database Restored Successfully Offline!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, if (langCode == "te") "డేటాబేస్ విజయవంతంగా పునరుద్ధరించబడింది!" else "Database Restored Successfully Offline!", Toast.LENGTH_LONG).show()
                         } else {
-                            Toast.makeText(context, "Error: Invalid JSON/Data backup structure or corrupted file.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, if (langCode == "te") "లోపం: చెల్లని డేటా నిర్మాణం." else "Error: Invalid JSON/Data backup structure or corrupted file.", Toast.LENGTH_LONG).show()
                         }
                         showImportConfirmDialog = false
-                        pendingImportJsonString = ""
+                        pendingDecryptedJsonToRestore = ""
+                        pendingImportFileContent = ""
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Overwrite & Restore")
+                    Text(if (langCode == "te") "ఓవర్‌రైట్ & రీస్టోర్ చేయండి" else "Overwrite & Restore")
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
                         showImportConfirmDialog = false
-                        pendingImportJsonString = ""
+                        pendingDecryptedJsonToRestore = ""
+                        pendingImportFileContent = ""
                     }
                 ) {
-                    Text("Cancel")
+                    Text(if (langCode == "te") "రద్దు చేయండి" else "Cancel")
                 }
             }
         )
@@ -867,8 +1156,8 @@ fun SettingsScreen(
 
     if (showPinSetupDialog) {
         AlertDialog(
-            onDismissRequest = { 
-                showPinSetupDialog = false 
+            onDismissRequest = {
+                showPinSetupDialog = false
                 pinSetupText = ""
                 pinConfirmText = ""
                 pinSetupError = ""
@@ -890,10 +1179,10 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    
+
                     OutlinedTextField(
                         value = pinSetupText,
-                        onValueChange = { 
+                        onValueChange = {
                             if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                                 pinSetupText = it
                                 pinSetupError = ""
@@ -908,7 +1197,7 @@ fun SettingsScreen(
 
                     OutlinedTextField(
                         value = pinConfirmText,
-                        onValueChange = { 
+                        onValueChange = {
                             if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                                 pinConfirmText = it
                                 pinSetupError = ""
@@ -954,8 +1243,8 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { 
-                        showPinSetupDialog = false 
+                    onClick = {
+                        showPinSetupDialog = false
                         pinSetupText = ""
                         pinConfirmText = ""
                         pinSetupError = ""
@@ -969,8 +1258,8 @@ fun SettingsScreen(
 
     if (showPinDeactivateDialog) {
         AlertDialog(
-            onDismissRequest = { 
-                showPinDeactivateDialog = false 
+            onDismissRequest = {
+                showPinDeactivateDialog = false
                 pinDeactivateText = ""
                 pinDeactivateError = ""
             },
@@ -991,10 +1280,10 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    
+
                     OutlinedTextField(
                         value = pinDeactivateText,
-                        onValueChange = { 
+                        onValueChange = {
                             if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                                 pinDeactivateText = it
                                 pinDeactivateError = ""
@@ -1038,8 +1327,8 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { 
-                        showPinDeactivateDialog = false 
+                    onClick = {
+                        showPinDeactivateDialog = false
                         pinDeactivateText = ""
                         pinDeactivateError = ""
                     }
@@ -1079,7 +1368,7 @@ fun SettingsScreen(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    
+
                     Box(
                         modifier = Modifier
                             .size(80.dp)
@@ -1100,7 +1389,7 @@ fun SettingsScreen(
                             modifier = Modifier.size(48.dp)
                         )
                     }
-                    
+
                     Text(
                         text = if (langCode == "te") "స్కానింగ్ చేయడానికి తాకండి" else "TAP ICON TO SECURELY SCAN",
                         style = MaterialTheme.typography.labelSmall,
@@ -1117,6 +1406,18 @@ fun SettingsScreen(
                     Text(if (langCode == "te") "క్యాన్సిల్" else "Cancel")
                 }
             }
+        )
+    }
+
+    if (showDownloadOldReportsDialog) {
+        DownloadOldReportDialog(
+            vehicles = vehicles,
+            initialVehicleId = null,
+            expenses = expenses,
+            fuelLogs = fuelLogs,
+            serviceLogs = serviceLogs,
+            reminders = reminders,
+            onDismiss = { showDownloadOldReportsDialog = false }
         )
     }
 }

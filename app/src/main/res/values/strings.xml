@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">ManaVahana</string>
+    <string name="fuel_widget_name">Fuel Expense &amp; Clock Widget</string>
+    <string name="fuel_widget_description">Real-time clock and instant fuel expense tracker for your vehicle directly on your home screen.</string>
+    <string name="quick_add_fuel_title">Add Fuel Expense</string>
+    <string name="widget_pin_success">ManaVahana Fuel Widget added to Home Screen!</string>
 </resources>

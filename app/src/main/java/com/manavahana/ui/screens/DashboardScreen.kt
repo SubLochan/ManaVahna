@@ -73,6 +73,8 @@ fun DashboardScreen(
     var reportingVehicleName by remember { mutableStateOf("") }
     var showRemindersDialog by remember { mutableStateOf(false) }
     var notificationBadgeEnabled by remember { mutableStateOf(true) }
+    var showDownloadOldReportsDialog by remember { mutableStateOf(false) }
+    var oldReportInitialVehicleId by remember { mutableStateOf<Int?>(null) }
 
     val updateHelper = remember { AppUpdateHelper.getInstance(context) }
     val updateStatus by updateHelper.updateStatus.collectAsState()
@@ -128,11 +130,11 @@ fun DashboardScreen(
         val currentMonth = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
         val expensesSum = allExpenses.filter {
             it.vehicleId == selectedVehicle?.id &&
-            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
+                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
         }.sumOf { it.amount }
         val servicesSum = allServiceLogs.filter {
             it.vehicleId == selectedVehicle?.id &&
-            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
+                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
         }.sumOf { it.cost }
         expensesSum + servicesSum
     }
@@ -241,7 +243,7 @@ fun DashboardScreen(
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
-                            
+
                             // Glowing notification dot mapping active expirations size
                             if (notificationBadgeEnabled) {
                                 val pinCount = if (allReminders.isNotEmpty()) allReminders.size else 1
@@ -268,8 +270,11 @@ fun DashboardScreen(
             }
 
             // Play Store In-App Updates
-            if (updateStatus is UpdateStatus.UpdateAvailable) {
-                val status = updateStatus as UpdateStatus.UpdateAvailable
+            if (updateStatus is UpdateStatus.UpdateAvailable ||
+                updateStatus is UpdateStatus.Downloading ||
+                updateStatus is UpdateStatus.UpdateDownloaded ||
+                updateStatus is UpdateStatus.Installing
+            ) {
                 item {
                     Card(
                         modifier = Modifier
@@ -292,13 +297,23 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.NewReleases,
+                                    imageVector = when (updateStatus) {
+                                        is UpdateStatus.UpdateDownloaded -> Icons.Default.SystemUpdate
+                                        is UpdateStatus.Downloading, is UpdateStatus.Installing -> Icons.Default.Sync
+                                        else -> Icons.Default.NewReleases
+                                    },
                                     contentDescription = "అప్‌డేట్",
                                     tint = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier.size(24.dp)
                                 )
+                                val cardTitle = when (updateStatus) {
+                                    is UpdateStatus.Downloading -> if (langCode == "te") "అప్‌డేట్ డౌన్‌లోడ్ అవుతోంది..." else "Downloading Update..."
+                                    is UpdateStatus.UpdateDownloaded -> if (langCode == "te") "అప్‌డేట్ సిద్ధంగా ఉంది!" else "Update Ready to Install!"
+                                    is UpdateStatus.Installing -> if (langCode == "te") "అప్‌డేట్ ఇన్‌స్టాల్ అవుతోంది..." else "Installing Update..."
+                                    else -> Localizer.get("update_available_title", langCode)
+                                }
                                 Text(
-                                    text = Localizer.get("update_available_title", langCode),
+                                    text = cardTitle,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -307,14 +322,29 @@ fun DashboardScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            val versionStr = if (livePlayStoreVersion != "Retrieving..." && livePlayStoreVersion != "Not checked yet") {
-                                livePlayStoreVersion
-                            } else {
-                                "1.6"
+                            val statusVer = when (val s = updateStatus) {
+                                is UpdateStatus.UpdateAvailable -> s.versionName
+                                is UpdateStatus.UpdateDownloaded -> s.versionName
+                                else -> ""
+                            }
+                            val versionStr = when {
+                                statusVer.isNotBlank() -> statusVer
+                                livePlayStoreVersion.isNotBlank() &&
+                                        !livePlayStoreVersion.startsWith("Checking") &&
+                                        !livePlayStoreVersion.startsWith("Not checked") &&
+                                        !livePlayStoreVersion.startsWith("Published") -> livePlayStoreVersion
+                                else -> "New"
+                            }
+
+                            val cardDesc = when (updateStatus) {
+                                is UpdateStatus.Downloading -> if (langCode == "te") "నేపథ్యంలో అప్‌డేట్ డౌన్‌లోడ్ చేయబడుతోంది." else "Downloading the latest update package in background."
+                                is UpdateStatus.UpdateDownloaded -> if (langCode == "te") "కొత్త వెర్షన్ $versionStr సరిగ్గా డౌన్‌లోడ్ చేయబడింది. ఇన్‌స్టాల్ చేయడానికి నొక్కండి." else "Version $versionStr has been downloaded. Tap to complete installation and restart."
+                                is UpdateStatus.Installing -> if (langCode == "te") "అప్‌డేట్ ఇన్‌స్టాల్ చేయబడుతోంది..." else "App is applying the latest update..."
+                                else -> Localizer.get("update_available_desc", langCode).replace("%1\$s", versionStr)
                             }
 
                             Text(
-                                text = Localizer.get("update_available_desc", langCode).replace("%1\$s", versionStr),
+                                text = cardDesc,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
                             )
@@ -326,50 +356,70 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                TextButton(
-                                    onClick = { updateHelper.resetStatus() },
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
-                                    ),
-                                    modifier = Modifier.testTag("update_later_button")
-                                ) {
-                                    Text(Localizer.get("update_later", langCode), fontWeight = FontWeight.Bold)
-                                }
+                                if (updateStatus is UpdateStatus.UpdateAvailable) {
+                                    TextButton(
+                                        onClick = { updateHelper.resetStatus() },
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                        ),
+                                        modifier = Modifier.testTag("update_later_button")
+                                    ) {
+                                        Text(Localizer.get("update_later", langCode), fontWeight = FontWeight.Bold)
+                                    }
 
-                                Spacer(modifier = Modifier.width(12.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
 
-                                val activity = context as? Activity
-                                Button(
-                                    onClick = {
-                                        // Update local version preference storage to correspond to latest version
-                                        viewModel.updateSimulatedAppVersion(versionStr)
-                                        
-                                        // Launch real Google Play Store updater flow or redirect to store details
-                                        val info = status.appUpdateInfo
-                                        if (activity != null) {
-                                            if (info != null && !status.isSimulation) {
-                                                updateHelper.launchRealUpdate(
-                                                    activity = activity,
-                                                    appUpdateInfo = info,
-                                                    launcher = updateLauncher,
-                                                    isFlexible = status.isFlexibleAllowed
-                                                )
-                                            } else {
-                                                updateHelper.openPlayStore(activity)
+                                    val activity = context as? Activity
+                                    val status = updateStatus as UpdateStatus.UpdateAvailable
+                                    Button(
+                                        onClick = {
+                                            val info = status.appUpdateInfo
+                                            if (activity != null) {
+                                                if (info != null && !status.isSimulation) {
+                                                    updateHelper.launchRealUpdate(
+                                                        activity = activity,
+                                                        appUpdateInfo = info,
+                                                        launcher = updateLauncher,
+                                                        isFlexible = status.isFlexibleAllowed
+                                                    )
+                                                } else {
+                                                    updateHelper.openPlayStore(activity)
+                                                }
                                             }
-                                        }
-                                        updateHelper.resetStatus()
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiary,
-                                        contentColor = MaterialTheme.colorScheme.onTertiary
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.testTag("update_now_button")
-                                ) {
-                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(Localizer.get("update_now", langCode), fontWeight = FontWeight.Bold)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        ),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.testTag("update_now_button")
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(Localizer.get("update_now", langCode), fontWeight = FontWeight.Bold)
+                                    }
+                                } else if (updateStatus is UpdateStatus.UpdateDownloaded) {
+                                    Button(
+                                        onClick = {
+                                            updateHelper.completeUpdate()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        ),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.testTag("install_update_button")
+                                    ) {
+                                        Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(if (langCode == "te") "ఇన్‌స్టాల్ చేయండి" else "Install & Restart", fontWeight = FontWeight.Bold)
+                                    }
+                                } else if (updateStatus is UpdateStatus.Downloading || updateStatus is UpdateStatus.Installing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        strokeWidth = 2.dp
+                                    )
                                 }
                             }
                         }
@@ -435,8 +485,8 @@ fun DashboardScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 TextButton(
-                                    onClick = { 
-                                        viewModel.setBiometricPromptShown(true) 
+                                    onClick = {
+                                        viewModel.setBiometricPromptShown(true)
                                     },
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
@@ -446,7 +496,7 @@ fun DashboardScreen(
                                         .testTag("biometric_skip_prompt_button")
                                 ) {
                                     Text(
-                                        text = if (langCode == "te") "దాటవేయి" else "Skip", 
+                                        text = if (langCode == "te") "దాటవేయి" else "Skip",
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -469,13 +519,13 @@ fun DashboardScreen(
                                         .testTag("biometric_enable_prompt_button")
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Check, 
-                                        contentDescription = null, 
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (langCode == "te") "యాక్టివేట్ చేయి" else "Enable Shortcut", 
+                                        text = if (langCode == "te") "యాక్టివేట్ చేయి" else "Enable Shortcut",
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -605,25 +655,6 @@ fun DashboardScreen(
                                                 )
                                             }
                                         }
-
-                                        Spacer(modifier = Modifier.width(10.dp))
-
-                                        // Interactive action chevron
-                                        Box(
-                                            modifier = Modifier
-                                                .size(34.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.35f))
-                                                .clickable { onNavigateToVehicleDetails(pageVeh.id) },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ChevronRight,
-                                                contentDescription = "Details",
-                                                tint = Color.Black,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
                                     }
 
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -746,7 +777,7 @@ fun DashboardScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
                         )
-                        
+
                         Text(
                             text = "See All",
                             fontSize = 13.sp,
@@ -843,44 +874,8 @@ fun DashboardScreen(
                                 .width(155.dp)
                                 .height(130.dp)
                                 .clickable {
-                                    if (selectedVehicle != null) {
-                                        Toast.makeText(context, "Generating Monthly PDF Report...", Toast.LENGTH_SHORT).show()
-                                        val uri = PdfGenerator.generateVehicleMonthlyReport(
-                                            context = context,
-                                            vehicle = selectedVehicle!!,
-                                            expenses = allExpenses,
-                                            fuelLogs = allFuelLogs,
-                                            serviceLogs = allServiceLogs,
-                                            reminders = allReminders
-                                        )
-                                        if (uri != null) {
-                                            try {
-                                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                                    setDataAndType(uri, "application/pdf")
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                }
-                                                context.startActivity(Intent.createChooser(intent, "Open Monthly Expenses Report"))
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                                try {
-                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                        type = "application/pdf"
-                                                        putExtra(Intent.EXTRA_STREAM, uri)
-                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                    }
-                                                    context.startActivity(Intent.createChooser(shareIntent, "Share Monthly Expenses Report"))
-                                                } catch (ex: Exception) {
-                                                    ex.printStackTrace()
-                                                    Toast.makeText(context, "No app available to open or share PDF.", Toast.LENGTH_LONG).show()
-                                                }
-                                            }
-                                        } else {
-                                            Toast.makeText(context, "Failed to generate PDF Report.", Toast.LENGTH_LONG).show()
-                                        }
-                                    } else {
-                                        Toast.makeText(context, "Please add or select a vehicle first.", Toast.LENGTH_LONG).show()
-                                    }
+                                    oldReportInitialVehicleId = selectedVehicle?.id
+                                    showDownloadOldReportsDialog = true
                                 }
                                 .testTag("monthly_expenses_report_card"),
                             shape = RoundedCornerShape(18.dp),
@@ -929,7 +924,7 @@ fun DashboardScreen(
                         // Card 3: Switch Selectable Vehicles list
                         vehicles.forEach { veh ->
                             val isSelected = selectedVehicle?.id == veh.id
-                            
+
                             val borderStroke = if (isSelected) {
                                 BorderStroke(
                                     2.dp,
@@ -944,13 +939,13 @@ fun DashboardScreen(
                             } else {
                                 BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
                             }
-                            
+
                             val cardBgColor = if (isSelected) {
                                 Color(0xFF2E261F)
                             } else {
                                 Color(0xFF1C1C1E)
                             }
-                            
+
                             val cardModifier = if (isSelected) {
                                 Modifier
                                     .width(150.dp)
@@ -1216,6 +1211,11 @@ fun DashboardScreen(
                 }
             }
 
+            // HOME SCREEN FUEL WIDGET FEATURE
+            item {
+                HomeScreenWidgetCard(viewModel = viewModel)
+            }
+
             // EXECUTIVE OFFLINE REPORT ACTION BAR
             if (selectedVehicle != null) {
                 item {
@@ -1224,81 +1224,200 @@ fun DashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("pdf_report_generative_card"),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B1D)),
-                        border = BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
+                        border = BorderStroke(1.dp, Color(0xFFFFA000).copy(alpha = 0.4f))
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFFFA000).copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarMonth,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFFA000),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = if (langCode == "te") "మాస నివేదికలు & పాత రికార్డులు" else "Monthly & Past Reports",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = if (langCode == "te") "గత నెలల నివేదికలను ఎంచుకుని డౌన్‌లోడ్ చేసుకోండి" else "Download historical reports by selecting months",
+                                            fontSize = 11.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        oldReportInitialVehicleId = activeVeh.id
+                                        showDownloadOldReportsDialog = true
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFFFA000),
+                                        contentColor = Color.Black
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.05f)),
-                                    contentAlignment = Alignment.Center
+                                        .weight(1.3f)
+                                        .height(40.dp)
+                                        .testTag("btn_download_old_reports")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (langCode == "te") "నెలవారీ డౌన్‌లోడ్" else "Select Month / Download",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        reportingVehicleName = activeVeh.vehicleName
+                                        val uri = PdfGenerator.generateVehicleMonthlyReport(
+                                            context = context,
+                                            vehicle = activeVeh,
+                                            expenses = allExpenses,
+                                            fuelLogs = allFuelLogs,
+                                            serviceLogs = allServiceLogs,
+                                            reminders = allReminders
+                                        )
+                                        if (uri != null) {
+                                            generatedVehiclePdfUri = uri
+                                            showVehiclePdfSuccessDialog = true
+                                            Toast.makeText(context, "Current Month PDF ready!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Failed to generate vehicle PDF Report.", Toast.LENGTH_LONG).show()
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.5f)),
+                                    modifier = Modifier
+                                        .weight(0.9f)
+                                        .height(40.dp)
+                                        .testTag("vehicle_report_btn_${activeVeh.id}")
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.PictureAsPdf,
                                         contentDescription = null,
                                         tint = Color.Red,
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("This Month", fontSize = 11.sp, color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (vehicles.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                oldReportInitialVehicleId = null
+                                showDownloadOldReportsDialog = true
+                            }
+                            .testTag("pdf_garage_report_card"),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B1D)),
+                        border = BorderStroke(1.dp, Color(0xFFFFA000).copy(alpha = 0.4f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFFA000).copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFFA000),
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                                 Column {
                                     Text(
-                                        text = if (langCode == "te") "మాస నివేదిక" else if (langCode == "hi") "मासिक शीट" else "Monthly Sheet",
-                                        fontSize = 12.sp,
+                                        text = if (langCode == "te") "గ్యారేజ్ మాస నివేదికలు" else "Garage Monthly Reports",
+                                        fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
                                     )
                                     Text(
-                                        text = "Export active logs offline.",
-                                        fontSize = 10.sp,
+                                        text = if (langCode == "te") "నెలలవారీగా పాత నివేదికలను డౌన్‌లోడ్ చేసుకోండి" else "Download past months' PDF statements",
+                                        fontSize = 11.sp,
                                         color = Color.Gray
                                     )
                                 }
                             }
-
                             Button(
                                 onClick = {
-                                    reportingVehicleName = activeVeh.vehicleName
-                                    val uri = PdfGenerator.generateVehicleMonthlyReport(
-                                        context = context,
-                                        vehicle = activeVeh,
-                                        expenses = allExpenses,
-                                        fuelLogs = allFuelLogs,
-                                        serviceLogs = allServiceLogs,
-                                        reminders = allReminders
-                                    )
-                                    if (uri != null) {
-                                        generatedVehiclePdfUri = uri
-                                        showVehiclePdfSuccessDialog = true
-                                        Toast.makeText(context, "Monthly PDF Report ready!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Failed to generate vehicle PDF Report.", Toast.LENGTH_LONG).show()
-                                    }
+                                    oldReportInitialVehicleId = null
+                                    showDownloadOldReportsDialog = true
                                 },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFFFFA000),
                                     contentColor = Color.Black
                                 ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier
-                                    .height(34.dp)
-                                    .testTag("vehicle_report_btn_${activeVeh.id}")
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.height(38.dp)
                             ) {
-                                Text("PDF Report", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Download", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1610,6 +1729,18 @@ fun DashboardScreen(
             }
         )
     }
+
+    if (showDownloadOldReportsDialog) {
+        DownloadOldReportDialog(
+            vehicles = vehicles,
+            initialVehicleId = oldReportInitialVehicleId,
+            expenses = allExpenses,
+            fuelLogs = allFuelLogs,
+            serviceLogs = allServiceLogs,
+            reminders = allReminders,
+            onDismiss = { showDownloadOldReportsDialog = false }
+        )
+    }
 }
 
 @Composable
@@ -1624,13 +1755,13 @@ fun QuickActionChip(
         onClick = onClick,
         enabled = enabled,
         label = { Text(label, fontWeight = FontWeight.SemiBold) },
-        leadingIcon = { 
+        leadingIcon = {
             Icon(
-                icon, 
-                contentDescription = null, 
+                icon,
+                contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            ) 
+            )
         },
         colors = AssistChipDefaults.assistChipColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -1686,10 +1817,10 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
 
     // Component tab switcher
     var selectedTab by remember { mutableIntStateOf(0) } // 0 for Donut Visualizer, 1 for Dynamic Ledger Breakdowns
-    
+
     // Interactive segment highlight (auto-select category with maximum expense initially)
-    var selectedCategory by remember(categoryMap) { 
-        mutableStateOf(categoryMap.keys.maxByOrNull { categoryMap[it] ?: 0.0 } ?: "Fuel") 
+    var selectedCategory by remember(categoryMap) {
+        mutableStateOf(categoryMap.keys.maxByOrNull { categoryMap[it] ?: 0.0 } ?: "Fuel")
     }
 
     Card(
@@ -1774,7 +1905,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                     val highestCat = categoryMap.maxByOrNull { it.value }?.key ?: "None"
                     val highestAmt = categoryMap[highestCat] ?: 0.0
                     val highestPercentage = if (totalAmount > 0) (highestAmt / totalAmount) * 100 else 0.0
-                    
+
                     Box(
                         modifier = Modifier
                             .size(8.dp)
@@ -1820,10 +1951,10 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                                     val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
                                     val sweepAngle = ((amt / totalAmount) * 360f).toFloat()
                                     val isSelected = cat == selectedCategory
-                                    
+
                                     val strokeWidth = if (isSelected) 18.dp.toPx() else 11.dp.toPx()
                                     val diameterPadding = if (isSelected) 3.dp.toPx() else 8.dp.toPx()
-                                    
+
                                     drawArc(
                                         color = colors[index],
                                         startAngle = startAngle,
@@ -1845,7 +1976,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                             ) {
                                 val activeAmount = categoryMap[selectedCategory] ?: 0.0
                                 val activePercentage = (activeAmount / totalAmount) * 100
-                                
+
                                 Text(
                                     text = selectedCategory,
                                     fontSize = 11.sp,
@@ -1880,7 +2011,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                             categoryMap.entries.sortedByDescending { it.value }.take(5).forEach { (cat, amt) ->
                                 val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
                                 val isSelected = cat == selectedCategory
-                                
+
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1929,7 +2060,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                         categoryMap.entries.sortedByDescending { it.value }.take(6).forEach { (cat, amt) ->
                             val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
                             val portion = (amt / totalAmount).toFloat()
-                            
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()

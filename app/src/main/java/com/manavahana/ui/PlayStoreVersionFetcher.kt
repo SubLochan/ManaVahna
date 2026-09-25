@@ -5,119 +5,188 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
 object PlayStoreVersionFetcher {
     private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 
     /**
-     * Fetches the latest published version name from the Play Store webpage.
-     * Uses a highly reliable schema regex parser to extract the "softwareVersion" metadata field.
+     * Fetches the latest published version name directly from Google Play Store.
+     * Uses multiple resilient parsers to extract the version metadata.
      */
     suspend fun fetchVersion(packageName: String): String? = withContext(Dispatchers.IO) {
-        val url = "https://play.google.com/store/apps/details?id=$packageName&hl=en&gl=US"
-        try {
-            val request = Request.Builder()
-                .url(url)
-                // Set a modern browser User-Agent to avoid getting bot-prevented pages or older structures
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                .header("Accept-Language", "en-US,en;q=0.9")
-                .build()
+        val urls = listOf(
+            "https://play.google.com/store/apps/details?id=$packageName&hl=en&gl=US",
+            "https://play.google.com/store/apps/details?id=$packageName&hl=en",
+            "https://play.google.com/store/apps/details?id=$packageName"
+        )
 
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.e("PlayStoreVersionFetcher", "Failed to load Play Store page: code ${response.code}")
-                    return@withContext null
-                }
-                val html = response.body?.string() ?: return@withContext null
-                
-                // Primary Parser: HTML Schema structured JSON-LD (Search engines rely heavily on this)
-                // Looks for: "softwareVersion":"X.Y.Z"
-                val schemaPattern = Pattern.compile("\"softwareVersion\"\\s*:\\s*\"([^\"]+)\"")
-                val schemaMatcher = schemaPattern.matcher(html)
-                if (schemaMatcher.find()) {
-                    val version = schemaMatcher.group(1)?.trim()
-                    if (!version.isNullOrEmpty()) {
-                        Log.d("PlayStoreVersionFetcher", "Extracted version via JSON-LD softwareVersion: $version")
-                        return@withContext version
+        for (url in urls) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36")
+                    .header("Accept-Language", "en-US,en;q=0.9")
+                    .header("Cache-Control", "no-cache")
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        if (response.code == 404) {
+                            Log.d("PlayStoreVersionFetcher", "Play Store public listing not found (404) for $packageName. App may be unreleased or in closed testing.")
+                        } else {
+                            Log.w("PlayStoreVersionFetcher", "Failed to load Play Store page: code ${response.code}")
+                        }
+                        return@use
+                    }
+                    val html = response.body?.string() ?: return@use
+                    
+                    val extracted = parseVersionFromHtml(html)
+                    if (!extracted.isNullOrBlank()) {
+                        Log.d("PlayStoreVersionFetcher", "Successfully fetched Play Store version: $extracted from $url")
+                        return@withContext extracted
                     }
                 }
-
-                // Secondary Parser: search inside nested JSON string structures looking for potential version names
-                val inlineJsonPattern = Pattern.compile("itemprop=\"softwareVersion\"[^>]*>\\s*([^<]+)\\s*<")
-                val inlineMatcher = inlineJsonPattern.matcher(html)
-                if (inlineMatcher.find()) {
-                    val version = inlineMatcher.group(1)?.trim()
-                    if (!version.isNullOrEmpty()) {
-                        Log.d("PlayStoreVersionFetcher", "Extracted version via itemprop tag: $version")
-                        return@withContext version
-                    }
-                }
-
-                // Tertiary Parser: Check Play Store's client JS states if those structures are altered
-                val initDataPattern = Pattern.compile("\\[\\[\\[\"([\\d]+\\.[\\d]+(?:\\.[\\d]+)?(?:-[a-zA-Z0-9.]+)?)\"\\]\\]\\]")
-                val initDataMatcher = initDataPattern.matcher(html)
-                if (initDataMatcher.find()) {
-                    val version = initDataMatcher.group(1)?.trim()
-                    if (!version.isNullOrEmpty()) {
-                        Log.d("PlayStoreVersionFetcher", "Extracted version via nested data array: $version")
-                        return@withContext version
-                    }
-                }
+            } catch (e: Exception) {
+                Log.w("PlayStoreVersionFetcher", "Error fetching Play Store version from $url: ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.e("PlayStoreVersionFetcher", "Error scraping Play Store version", e)
         }
         null
     }
 
-    /**
-     * Dynamically calculates a version that is exactly one step/number lower than the provided version.
-     * Useful for automatically generating a dynamic current app version that is always behind the Play Store version.
-     */
-    fun getLowerVersion(version: String): String {
-        try {
-            val clean = version.trim()
-            if (clean.isEmpty() || clean == "Retrieving..." || clean == "Not checked yet") {
-                return "1.0"
-            }
-            val parts = clean.split(".").map { it.trim() }
-            if (parts.isNotEmpty()) {
-                val mutableParts = parts.toMutableList()
-                // Find the first integer from the end that is > 0 and decrement it
-                for (i in mutableParts.lastIndex downTo 0) {
-                    val part = mutableParts[i]
-                    val digits = part.takeWhile { it.isDigit() }
-                    if (digits.isNotEmpty()) {
-                        val num = digits.toIntOrNull()
-                        if (num != null && num > 0) {
-                            val newNum = num - 1
-                            val rest = part.substring(digits.length)
-                            mutableParts[i] = "$newNum$rest"
-                            return mutableParts.joinToString(".")
-                        }
-                    }
-                }
-                // Fallback: if all parts are 0 (e.g. "0.0.0"), decrement the last segment regardless
-                val lastPart = mutableParts.lastOrNull()
-                if (lastPart != null) {
-                    val digits = lastPart.takeWhile { it.isDigit() }
-                    if (digits.isNotEmpty()) {
-                        val num = digits.toIntOrNull()
-                        if (num != null) {
-                            val newNum = num - 1
-                            val rest = lastPart.substring(digits.length)
-                            mutableParts[mutableParts.lastIndex] = "$newNum$rest"
-                            return mutableParts.joinToString(".")
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            // ignore
+    private fun parseVersionFromHtml(html: String): String? {
+        // Parser 1: Schema JSON-LD structured data ("softwareVersion":"X.Y.Z")
+        val schemaPattern = Pattern.compile("\"softwareVersion\"\\s*:\\s*\"([^\"]+)\"")
+        val schemaMatcher = schemaPattern.matcher(html)
+        if (schemaMatcher.find()) {
+            val version = cleanVersionString(schemaMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
         }
-        return "1.0"
+
+        // Parser 2: HTML itemprop tag
+        val inlineJsonPattern = Pattern.compile("itemprop=\"softwareVersion\"[^>]*>\\s*([^<]+)\\s*<")
+        val inlineMatcher = inlineJsonPattern.matcher(html)
+        if (inlineMatcher.find()) {
+            val version = cleanVersionString(inlineMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 3: "About this app" section with "Version" title
+        val aboutVersionPattern = Pattern.compile("(?i)Version</div>\\s*<div[^>]*>\\s*([0-9]+(?:\\.[0-9]+)+(?:-[a-zA-Z0-9.]+)?)\\s*</div>")
+        val aboutVersionMatcher = aboutVersionPattern.matcher(html)
+        if (aboutVersionMatcher.find()) {
+            val version = cleanVersionString(aboutVersionMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 4: Play Store metadata class e.g. class="reAt0">1.0.2</div>
+        val reAt0Pattern = Pattern.compile("class=\"reAt0\">\\s*([^<]+)\\s*<")
+        val reAt0Matcher = reAt0Pattern.matcher(html)
+        if (reAt0Matcher.find()) {
+            val version = cleanVersionString(reAt0Matcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 5: Play Store metadata class e.g. class="wVqvd">1.0.2</div>
+        val wVqvdPattern = Pattern.compile("class=\"wVqvd\">\\s*([^<]+)\\s*<")
+        val wVqvdMatcher = wVqvdPattern.matcher(html)
+        if (wVqvdMatcher.find()) {
+            val version = cleanVersionString(wVqvdMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 6: Nested data arrays in Play Store JS chunks e.g. [[["1.0.2"]]]
+        val initDataPattern = Pattern.compile("\\[\\[\\[\"([\\d]+\\.[\\d]+(?:\\.[\\d]+)?(?:-[a-zA-Z0-9.]+)?)\"\\]\\]\\]")
+        val initDataMatcher = initDataPattern.matcher(html)
+        if (initDataMatcher.find()) {
+            val version = cleanVersionString(initDataMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 7: 2-bracket JS data chunk e.g. [["1.0.2"]]
+        val twoBracketPattern = Pattern.compile("\\[\\[\"([\\d]+\\.[\\d]+(?:\\.[\\d]+)?(?:-[a-zA-Z0-9.]+)?)\"\\]")
+        val twoBracketMatcher = twoBracketPattern.matcher(html)
+        if (twoBracketMatcher.find()) {
+            val version = cleanVersionString(twoBracketMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 8: AF_initDataCallback key-value pairs e.g. "softwareVersion","1.0.2"
+        val altSchemaPattern = Pattern.compile("\"softwareVersion\",\\s*\"([^\"]+)\"")
+        val altSchemaMatcher = altSchemaPattern.matcher(html)
+        if (altSchemaMatcher.find()) {
+            val version = cleanVersionString(altSchemaMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 9: "versionName":"1.0.2"
+        val versionNamePattern = Pattern.compile("\"versionName\"\\s*:\\s*\"([^\"]+)\"")
+        val versionNameMatcher = versionNamePattern.matcher(html)
+        if (versionNameMatcher.find()) {
+            val version = cleanVersionString(versionNameMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        // Parser 10: Legacy Play Store detail table format
+        val legacyPattern = Pattern.compile("(?:Current Version|Version)[\\s\\S]{0,100}?class=\"htlgb\">([^<]+)<")
+        val legacyMatcher = legacyPattern.matcher(html)
+        if (legacyMatcher.find()) {
+            val version = cleanVersionString(legacyMatcher.group(1))
+            if (!version.isNullOrEmpty()) return version
+        }
+
+        return null
+    }
+
+    private fun cleanVersionString(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val cleaned = raw.trim().removePrefix("v").removePrefix("V").trim()
+        // Ensure it contains at least one digit and period or numeric structure
+        if (cleaned.any { it.isDigit() } && (cleaned.contains(".") || cleaned.all { it.isDigit() })) {
+            return cleaned
+        }
+        return null
+    }
+
+    /**
+     * Determines whether [latest] is strictly newer than [current].
+     * Handles semantic versions (e.g. 1.0.2 vs 1.0.1), different segment lengths (1.1 vs 1.0.9),
+     * and non-numeric suffixes or build strings.
+     */
+    fun isNewerVersion(current: String, latest: String): Boolean {
+        if (latest.isBlank() || latest == "Retrieving..." || latest == "Not checked yet" || latest == "Not published yet") return false
+        if (current.isBlank()) return true
+        if (current.trim() == latest.trim()) return false
+
+        try {
+            val currClean = current.trim().removePrefix("v").removePrefix("V")
+            val lateClean = latest.trim().removePrefix("v").removePrefix("V")
+
+            val currParts = currClean.split(".").map { part ->
+                val digits = part.takeWhile { it.isDigit() }
+                digits.toIntOrNull() ?: 0
+            }
+            val lateParts = lateClean.split(".").map { part ->
+                val digits = part.takeWhile { it.isDigit() }
+                digits.toIntOrNull() ?: 0
+            }
+
+            val maxLen = maxOf(currParts.size, lateParts.size)
+            for (i in 0 until maxLen) {
+                val currVal = currParts.getOrNull(i) ?: 0
+                val lateVal = lateParts.getOrNull(i) ?: 0
+                if (lateVal > currVal) return true
+                if (currVal > lateVal) return false
+            }
+            return false
+        } catch (e: Exception) {
+            return latest.trim() != current.trim()
+        }
     }
 }
+

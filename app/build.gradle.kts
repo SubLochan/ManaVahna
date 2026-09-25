@@ -16,8 +16,8 @@ android {
     applicationId = "com.Lochan.ManaVahana"
     minSdk = 24
     targetSdk = 36
-    versionCode = 18
-    versionName = "2.9"
+    versionCode = 28
+    versionName = "3.4"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -63,6 +63,11 @@ android {
     compose = true
     buildConfig = true
   }
+  packaging {
+    jniLibs {
+      useLegacyPackaging = false
+    }
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
@@ -97,6 +102,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.fragment.ktx)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)

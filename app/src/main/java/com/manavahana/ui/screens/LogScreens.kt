@@ -31,6 +31,7 @@ import com.manavahana.ui.ManaVahanaViewModel
 import kotlinx.coroutines.launch
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
@@ -1113,6 +1114,7 @@ fun DocumentVaultScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingDoc by remember { mutableStateOf<Document?>(null) }
     var previewingDoc by remember { mutableStateOf<Document?>(null) }
+    var renewingDoc by remember { mutableStateOf<Document?>(null) }
     var itemToDelete by remember { mutableStateOf<Document?>(null) }
 
     if (previewingDoc != null) {
@@ -1210,62 +1212,77 @@ fun DocumentVaultScreen(
                 }
             },
             confirmButton = {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            try {
-                                val contentUri = getShareableUri(context, path)
-                                if (contentUri != null) {
-                                    val mime = getMimeType(path)
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        setDataAndType(contentUri, mime)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, "డాక్యుమెంట్ ఓపెన్ చేయండి (Open with)"))
-                                } else {
-                                    android.widget.Toast.makeText(context, "Error resolving path link.", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                android.widget.Toast.makeText(context, "No app available to open this format.", android.widget.Toast.LENGTH_LONG).show()
-                            }
+                            val target = previewingDoc
+                            previewingDoc = null
+                            renewingDoc = target
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth().testTag("btn_preview_renew_paper")
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Open", fontSize = 12.sp)
+                        Text(if (langCode == "te") "పత్రం పునరుద్ధరణ / మార్పు (Renew & Replace Paper)" else "Renew & Replace Paper", fontSize = 12.sp)
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            try {
-                                val contentUri = getShareableUri(context, path)
-                                if (contentUri != null) {
-                                    val mime = getMimeType(path)
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = mime
-                                        putExtra(Intent.EXTRA_STREAM, contentUri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, "మిత్రులతో పంచుకోండి (Share Document)"))
-                                } else {
-                                    android.widget.Toast.makeText(context, "Error resolving share link.", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                android.widget.Toast.makeText(context, "Failed to initiate share.", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Share", fontSize = 12.sp)
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    val contentUri = getShareableUri(context, path)
+                                    if (contentUri != null) {
+                                        val mime = getMimeType(path)
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(contentUri, mime)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "డాక్యుమెంట్ ఓపెన్ చేయండి (Open with)"))
+                                    } else {
+                                        android.widget.Toast.makeText(context, "Error resolving path link.", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    android.widget.Toast.makeText(context, "No app available to open this format.", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open", fontSize = 12.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    val contentUri = getShareableUri(context, path)
+                                    if (contentUri != null) {
+                                        val mime = getMimeType(path)
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = mime
+                                            putExtra(Intent.EXTRA_STREAM, contentUri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "మిత్రులతో పంచుకోండి (Share Document)"))
+                                    } else {
+                                        android.widget.Toast.makeText(context, "Error resolving share link.", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    android.widget.Toast.makeText(context, "Failed to initiate share.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share", fontSize = 12.sp)
+                        }
                     }
                 }
             }
@@ -1290,6 +1307,18 @@ fun DocumentVaultScreen(
             } else {
                 documentPath = uri.toString()
             }
+            if (title.isBlank()) {
+                title = "$docType Document"
+            }
+        }
+    }
+
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val localPath = copyUriToInternalStorage(context, uri, "doc_photo")
+            documentPath = localPath ?: uri.toString()
             if (title.isBlank()) {
                 title = "$docType Document"
             }
@@ -1413,16 +1442,36 @@ fun DocumentVaultScreen(
                                         Text(reminder.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onErrorContainer)
                                         Text(statusText, fontSize = 11.sp, color = if (daysLeft <= 3) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f))
                                     }
-                                    IconButton(
-                                        onClick = { viewModel.toggleReminderCompleted(reminder) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Mark Cleared",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        val matchedDoc = allDocuments.find { d ->
+                                            d.vehicleId == reminder.vehicleId && (
+                                                d.title.equals(reminder.title.removeSuffix(" Expiry"), ignoreCase = true) ||
+                                                reminder.title.contains(d.title, ignoreCase = true) ||
+                                                d.docType.equals(reminder.category, ignoreCase = true)
+                                            )
+                                        }
+                                        if (matchedDoc != null) {
+                                            FilledTonalButton(
+                                                onClick = { renewingDoc = matchedDoc },
+                                                modifier = Modifier.height(30.dp),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                            ) {
+                                                Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(if (langCode == "te") "పునరుద్ధరణ" else "Renew", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                        IconButton(
+                                            onClick = { viewModel.toggleReminderCompleted(reminder) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Mark Cleared",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1469,61 +1518,151 @@ fun DocumentVaultScreen(
                     LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         items(allDocuments) { doc ->
                             val vehicleName = vehicles.find { it.id == doc.vehicleId }?.vehicleName ?: "Vehicle"
+                            val isDocExpired = doc.expiryDate != null && doc.expiryDate > 0 && doc.expiryDate < currentTime
+                            val docDaysLeft = if (doc.expiryDate != null && doc.expiryDate > 0) ((doc.expiryDate - currentTime) / (24 * 60 * 60 * 1000L)).toInt() else null
+                            val isDocExpiringSoon = docDaysLeft != null && docDaysLeft in 0..30
+
                             Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp)
+                                    .testTag("doc_card_${doc.id}"),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDocExpired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                    else if (isDocExpiringSoon) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    else MaterialTheme.colorScheme.surface
+                                ),
+                                border = if (isDocExpired) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                                else if (isDocExpiringSoon) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
+                                else null
                             ) {
-                                Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = when {
+                                                        doc.docType.contains("Insurance", ignoreCase = true) -> Icons.Default.Shield
+                                                        doc.docType.contains("Pollution", ignoreCase = true) -> Icons.Default.Co2
+                                                        else -> Icons.Default.Lock
+                                                    },
+                                                    contentDescription = null,
+                                                    tint = if (isDocExpired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("$vehicleName - ${doc.title}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                            }
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text("Doc Type: ${doc.docType}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+
+                                            // Expiry status indicator badge
+                                            if (doc.expiryDate != null && doc.expiryDate > 0) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                val (statusBadgeText, badgeColor, badgeBg) = when {
+                                                    isDocExpired -> Triple(
+                                                        if (langCode == "te") "🔴 కాలపరిమితి ముగిసింది (${-docDaysLeft!!} రోజుల క్రితం)" else "🔴 Expired ${-docDaysLeft!!} days ago",
+                                                        MaterialTheme.colorScheme.error,
+                                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                                                    )
+                                                    isDocExpiringSoon -> Triple(
+                                                        if (langCode == "te") "⚠️ ${docDaysLeft} రోజుల్లో ముగుస్తుంది" else "⚠️ Expires in $docDaysLeft days",
+                                                        Color(0xFFB45309),
+                                                        Color(0xFFFEF3C7)
+                                                    )
+                                                    else -> Triple(
+                                                        if (langCode == "te") "🟢 గడువు: ${sdf.format(Date(doc.expiryDate))}" else "🟢 Valid till ${sdf.format(Date(doc.expiryDate))}",
+                                                        Color(0xFF047857),
+                                                        Color(0xFFECFDF5)
+                                                    )
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(badgeBg)
+                                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(statusBadgeText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = badgeColor)
+                                                }
+                                            }
+                                        }
+
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("$vehicleName - ${doc.title}", fontWeight = FontWeight.Bold)
-                                        }
-                                        Text("Doc Type: ${doc.docType}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                        if (doc.expiryDate != null && doc.expiryDate > 0) {
-                                            Text("Expires on: ${sdf.format(Date(doc.expiryDate))}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                    Row {
-                                        if (!doc.documentPath.isNullOrBlank()) {
+                                            if (!doc.documentPath.isNullOrBlank()) {
+                                                IconButton(
+                                                    onClick = { previewingDoc = doc }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Visibility,
+                                                        contentDescription = "View Doc Status",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
                                             IconButton(
                                                 onClick = {
-                                                    try {
-                                                        previewingDoc = doc; if (false) { val intent = Intent(Intent.ACTION_VIEW).apply {
-                                                            setDataAndType(Uri.parse(doc.documentPath), contentResolver.getType(Uri.parse(doc.documentPath)) ?: "*/*") // test successful
-                                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                        }
-                                                        context.startActivity(intent) }
-                                                    } catch (e: Exception) {
-                                                        android.widget.Toast.makeText(context, "Opening safe local file sandbox view...", android.widget.Toast.LENGTH_SHORT).show()
-                                                    }
+                                                    editingDoc = doc
+                                                    vehicleId = doc.vehicleId
+                                                    docType = doc.docType
+                                                    title = doc.title
+                                                    expiryDate = doc.expiryDate ?: 0L
+                                                    documentPath = doc.documentPath
+                                                    showAddDialog = true
                                                 }
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Visibility,
-                                                    contentDescription = "View Doc Status",
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
+                                                Icon(Icons.Default.Edit, contentDescription = "Edit Doc", modifier = Modifier.size(18.dp))
+                                            }
+                                            IconButton(onClick = { itemToDelete = doc }) {
+                                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                                             }
                                         }
-                                        IconButton(
-                                            onClick = {
-                                                editingDoc = doc
-                                                vehicleId = doc.vehicleId
-                                                docType = doc.docType
-                                                title = doc.title
-                                                expiryDate = doc.expiryDate ?: 0L
-                                                documentPath = doc.documentPath
-                                                showAddDialog = true
-                                            }
+                                    }
+
+                                    // Dedicated Renew & Replace Paper action row
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = if (doc.documentPath.isNullOrBlank()) "No paper attached" else "📄 Paper attached",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Button(
+                                            onClick = { renewingDoc = doc },
+                                            colors = if (isDocExpired) {
+                                                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                            } else if (isDocExpiringSoon) {
+                                                ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
+                                            } else {
+                                                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                            modifier = Modifier
+                                                .height(34.dp)
+                                                .testTag("btn_renew_doc_${doc.id}")
                                         ) {
-                                            Icon(Icons.Default.Edit, contentDescription = "Edit Doc", modifier = Modifier.size(18.dp))
-                                        }
-                                        IconButton(onClick = { itemToDelete = doc }) {
-                                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
+                                            Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(15.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = if (isDocExpired) {
+                                                    if (langCode == "te") "ఇప్పుడే పునరుద్ధరించండి" else "Renew Now"
+                                                } else {
+                                                    if (langCode == "te") "పునరుద్ధరణ / మార్పు" else "Renew / Replace Paper"
+                                                },
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         }
                                     }
                                 }
@@ -1660,14 +1799,48 @@ fun DocumentVaultScreen(
                             }
                         }
 
-                        Button(
-                            onClick = { fileLauncher.launch("*/*") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.CloudUpload, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (selectedFileName != null) "File: $selectedFileName 👍" else "Select PDF or Image File")
+                            Text(
+                                text = if (selectedFileName != null) "Attached: $selectedFileName 👍" else "Document Paper / Image (Optional)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        photoLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Pick Photo", fontSize = 11.sp)
+                                }
+
+                                OutlinedButton(
+                                    onClick = { fileLauncher.launch("*/*") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("PDF / File", fontSize = 11.sp)
+                                }
+                            }
                         }
                     }
                 }
@@ -1726,6 +1899,39 @@ fun DocumentVaultScreen(
                 TextButton(onClick = { itemToDelete = null }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (renewingDoc != null) {
+        val docToRenew = renewingDoc!!
+        val vehicleName = vehicles.find { it.id == docToRenew.vehicleId }?.vehicleName ?: "Vehicle"
+        RenewDocumentDialog(
+            document = docToRenew,
+            vehicleName = vehicleName,
+            onDismiss = { renewingDoc = null },
+            onRenewConfirmed = { updatedDoc, renewalExpenseAmount, expenseNotes ->
+                viewModel.updateDocument(context, updatedDoc)
+                if (renewalExpenseAmount != null && renewalExpenseAmount > 0) {
+                    val cat = if (updatedDoc.docType.contains("Insurance", ignoreCase = true)) "Insurance"
+                    else if (updatedDoc.docType.contains("Pollution", ignoreCase = true)) "Pollution"
+                    else "Service"
+                    viewModel.addExpense(
+                        Expense(
+                            vehicleId = updatedDoc.vehicleId,
+                            expenseDate = System.currentTimeMillis(),
+                            category = cat,
+                            amount = renewalExpenseAmount,
+                            notes = expenseNotes ?: "Renewed ${updatedDoc.title}"
+                        )
+                    )
+                }
+                android.widget.Toast.makeText(
+                    context,
+                    if (langCode == "te") "పత్రం విజయవంతంగా పునరుద్ధరించబడింది! కొత్త పత్రం భద్రపరచబడింది." else "Document renewed successfully with new paper and expiry date!",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                renewingDoc = null
             }
         )
     }

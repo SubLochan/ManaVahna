@@ -29,6 +29,38 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.manavahana.ui.QuickAddFuelActivity"
+            android:exported="true"
+            android:label="@string/quick_add_fuel_title"
+            android:theme="@style/Theme.QuickAddDialog"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.manavahana.quickfuel"
+            android:windowSoftInputMode="adjustResize|stateVisible"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="com.manavahana.action.QUICK_ADD_FUEL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name="com.manavahana.widget.FuelExpenseWidgetProvider"
+            android:exported="true"
+            android:label="@string/fuel_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.manavahana.action.REFRESH_WIDGET" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/fuel_widget_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

@@ -16,6 +16,11 @@ import java.util.concurrent.TimeUnit
 
 class ManaVahanaApplication : Application() {
 
+    companion object {
+        lateinit var instance: ManaVahanaApplication
+            private set
+    }
+
     // Lazy initialization for Dependency Injection Container
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy {
@@ -33,32 +38,60 @@ class ManaVahanaApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         createNotificationChannel()
         setupPeriodicReminders()
+        try {
+            com.manavahana.widget.FuelWidgetUpdater.updateAllWidgets(this)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "ManaVahana Reminders"
-            val descriptionText = "Notifications for vehicle maintenance, insurance expiries, and service renewals"
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel("manavahana_reminders", name, importance).apply {
-                description = descriptionText
-            }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+
+            val reminderChannel = NotificationChannel(
+                "manavahana_reminders",
+                "ManaVahana Reminders",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for vehicle maintenance, insurance expiries, and service renewals"
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+            }
+            notificationManager.createNotificationChannel(reminderChannel)
+
+            val updateChannel = NotificationChannel(
+                "app_update_channel",
+                "ManaVahana App Updates",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for available software and system updates"
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+            notificationManager.createNotificationChannel(updateChannel)
         }
     }
 
     private fun setupPeriodicReminders() {
         try {
+            val constraints = androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build()
+
             val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
-                1, TimeUnit.HOURS
-            ).build()
+                15, TimeUnit.MINUTES
+            ).setConstraints(constraints).build()
 
             WorkManager.getInstance(this).enqueueUniquePeriodicWork(
                 "manavahana_reminder_work",
-                ExistingPeriodicWorkPolicy.REPLACE,
+                ExistingPeriodicWorkPolicy.KEEP,
                 workRequest
             )
         } catch (e: Exception) {

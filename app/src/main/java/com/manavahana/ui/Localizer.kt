@@ -66,7 +66,11 @@ object Localizer {
             "update_available_title" to "ManaVahana Update Available!",
             "update_available_desc" to "Version %1\$s is available for ManaVahana. Update now.",
             "update_later" to "Later",
-            "update_now" to "Update Now"
+            "update_now" to "Update Now",
+            "widget_feature_title" to "Home Screen Widget",
+            "widget_feature_desc" to "Place the ManaVahana Fuel Expense & Clock Widget on your device's home screen to record petrol/diesel costs instantly.",
+            "widget_btn_add_to_home" to "Add Widget to Home Screen",
+            "widget_sync_now" to "Sync & Refresh Widget"
         ),
         "te" to mapOf(
             "app_title" to "మనవాహన",
@@ -119,7 +123,11 @@ object Localizer {
             "update_available_title" to "మనవాహన అప్‌డేట్ అందుబాటులో ఉంది!",
             "update_available_desc" to "మనవాహన కోసం వెర్షన్ %1\$s అందుబాటులో ఉంది. ఇప్పుడే అప్‌డేట్ చేయండి.",
             "update_later" to "తర్వాత (Later)",
-            "update_now" to "ఇప్పుడే అప్‌డేట్ చేయి"
+            "update_now" to "ఇప్పుడే అప్‌డేట్ చేయి",
+            "widget_feature_title" to "హోమ్ స్క్రీన్ విడ్జెట్ (Home Screen Widget)",
+            "widget_feature_desc" to "క్లాక్ విడ్జెట్ లాగా మీ ఫోన్ హోమ్ స్క్రీన్‌పై ఇంధన ఖర్చులను సులభంగా నమోదు చేయడానికి విడ్జెట్‌ను ఉంచండి.",
+            "widget_btn_add_to_home" to "హోమ్ స్క్రీన్‌కు విడ్జెట్ జోడించు",
+            "widget_sync_now" to "విడ్జెట్‌ను సమకాలీకరించు"
         ),
         "hi" to mapOf(
             "app_title" to "ManaVahana",
@@ -173,7 +181,11 @@ object Localizer {
             "update_available_title" to "ManaVahana अपडेट उपलब्ध है!",
             "update_available_desc" to "ManaVahana के लिए संस्करण %1\$s उपलब्ध है। अभी अपडेट करें।",
             "update_later" to "बाद में (Later)",
-            "update_now" to "अभी अपडेट करें"
+            "update_now" to "अभी अपडेट करें",
+            "widget_feature_title" to "होम स्क्रीन विजेट (Home Screen Widget)",
+            "widget_feature_desc" to "घड़ी विजेट की तरह अपने होम स्क्रीन से सीधे ईंधन खर्च दर्ज करने के लिए मानवाहन विजेट जोड़ें।",
+            "widget_btn_add_to_home" to "होम स्क्रीन पर विजेट जोड़ें",
+            "widget_sync_now" to "विजेट सिंक करें"
         )
     )
 

@@ -13,6 +13,7 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import android.util.Base64
+import com.manavahana.util.BackupCryptoHelper
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ManaVahanaViewModel(
@@ -310,18 +311,33 @@ class ManaVahanaViewModel(
                     notes = "Filled ${String.format("%.2f", log.litersFilled)}L fuel at ${log.fuelStationName}"
                 )
             )
+            try {
+                com.manavahana.widget.FuelWidgetUpdater.updateAllWidgets(com.manavahana.ManaVahanaApplication.instance)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun deleteFuelLog(log: FuelLog) {
         viewModelScope.launch {
             repository.deleteFuelLog(log)
+            try {
+                com.manavahana.widget.FuelWidgetUpdater.updateAllWidgets(com.manavahana.ManaVahanaApplication.instance)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun updateFuelLog(log: FuelLog) {
         viewModelScope.launch {
             repository.updateFuelLog(log)
+            try {
+                com.manavahana.widget.FuelWidgetUpdater.updateAllWidgets(com.manavahana.ManaVahanaApplication.instance)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -547,7 +563,11 @@ class ManaVahanaViewModel(
     }
 
     // Backup & Restore
-    fun exportBackupJsonString(context: android.content.Context): String {
+    fun generateRandomBackupPassword(): String {
+        return BackupCryptoHelper.generateRandomPassword()
+    }
+
+    fun exportBackupJsonString(context: android.content.Context, password: String): String {
         val root = org.json.JSONObject()
         root.put("appName", "ManaVahana")
         root.put("version", 1)
@@ -663,12 +683,19 @@ class ManaVahanaViewModel(
         root.put("reminders", reminderArray)
 
         val plainJson = root.toString(2)
-        return encryptBackup(plainJson)
+        return BackupCryptoHelper.encryptBackup(plainJson, password)
     }
 
-    fun importBackupJson(context: android.content.Context, jsonString: String): Boolean {
+    fun isPasswordEncryptedBackup(fileContent: String): Boolean {
+        return BackupCryptoHelper.isPasswordEncryptedBackup(fileContent)
+    }
+
+    fun decryptBackupPayload(fileContent: String, password: String): BackupCryptoHelper.DecryptResult {
+        return BackupCryptoHelper.decryptBackup(fileContent, password)
+    }
+
+    fun restoreBackupJson(context: android.content.Context, decryptedJson: String): Boolean {
         return try {
-            val decryptedJson = decryptBackup(jsonString.trim())
             val root = org.json.JSONObject(decryptedJson)
             if (!root.has("appName") || root.getString("appName") != "ManaVahana") {
                 return false

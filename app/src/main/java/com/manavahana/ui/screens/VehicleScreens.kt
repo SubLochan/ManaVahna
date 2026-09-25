@@ -473,6 +473,7 @@ fun VehicleDetailsScreen(
 
     var showAddDocumentDialog by remember { mutableStateOf(false) }
     var editingDocument by remember { mutableStateOf<Document?>(null) }
+    var renewingDocument by remember { mutableStateOf<Document?>(null) }
     var docType by remember { mutableStateOf("RC") }
     var docTitle by remember { mutableStateOf("") }
     var docExpiryDate by remember { mutableStateOf(0L) }
@@ -548,6 +549,18 @@ fun VehicleDetailsScreen(
             } else {
                 docDocumentPath = uri.toString()
             }
+            if (docTitle.isBlank()) {
+                docTitle = "$docType Document"
+            }
+        }
+    }
+
+    val docPhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            val localPath = copyUriToInternalStorage(context, uri, "doc_photo")
+            docDocumentPath = localPath ?: uri.toString()
             if (docTitle.isBlank()) {
                 docTitle = "$docType Document"
             }
@@ -940,14 +953,48 @@ fun VehicleDetailsScreen(
                             }
                         }
                         item {
-                            Button(
-                                onClick = { docLauncher.launch("*/*") },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.CloudUpload, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (docDocumentPath != null) getLocalizedText("File:", langCode) + " ${docDocumentPath?.substringAfterLast("/")} 👍" else getLocalizedText("Select PDF or Image File", langCode))
+                                Text(
+                                    text = if (docDocumentPath != null) getLocalizedText("Attached File:", langCode) + " ${docDocumentPath?.substringAfterLast("/")} 👍" else getLocalizedText("Document Paper / Image (Optional)", langCode),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            docPhotoLauncher.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                            )
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Photo", fontSize = 11.sp)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { docLauncher.launch("*/*") },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("PDF / File", fontSize = 11.sp)
+                                    }
+                                }
                             }
                         }
                     }
@@ -1283,7 +1330,8 @@ fun VehicleDetailsScreen(
                                         docDocumentPath = doc.documentPath
                                         showAddDocumentDialog = true
                                     },
-                                    onDelete = { documentToDelete = doc }
+                                    onDelete = { documentToDelete = doc },
+                                    onRenew = { renewingDocument = doc }
                                 )
                             }
                         }
@@ -1292,6 +1340,37 @@ fun VehicleDetailsScreen(
             }
         }
     }
+
+        if (renewingDocument != null) {
+            RenewDocumentDialog(
+                document = renewingDocument!!,
+                vehicleName = activeVehicle.vehicleName,
+                onDismiss = { renewingDocument = null },
+                onRenewConfirmed = { updatedDoc, renewalExpenseAmount, expenseNotes ->
+                    viewModel.updateDocument(context, updatedDoc)
+                    if (renewalExpenseAmount != null && renewalExpenseAmount > 0) {
+                        val cat = if (updatedDoc.docType.contains("Insurance", ignoreCase = true)) "Insurance"
+                        else if (updatedDoc.docType.contains("Pollution", ignoreCase = true)) "Pollution"
+                        else "Service"
+                        viewModel.addExpense(
+                            Expense(
+                                vehicleId = updatedDoc.vehicleId,
+                                expenseDate = System.currentTimeMillis(),
+                                category = cat,
+                                amount = renewalExpenseAmount,
+                                notes = expenseNotes ?: "Renewed ${updatedDoc.title}"
+                            )
+                        )
+                    }
+                    android.widget.Toast.makeText(
+                        context,
+                        if (langCode == "te") "పత్రం విజయవంతంగా పునరుద్ధరించబడింది!" else "Document renewed successfully with updated paper!",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    renewingDocument = null
+                }
+            )
+        }
 
         // Edit Vehicle Overlay Dialog
         if (showEditDialog) {
@@ -1788,52 +1867,114 @@ fun ExpenseItem(expense: Expense, onEdit: () -> Unit, onDelete: () -> Unit) {
 }
 
 @Composable
-fun DocumentItem(doc: Document, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun DocumentItem(
+    doc: Document,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onRenew: (() -> Unit)? = null
+) {
     val context = LocalContext.current
+    val langCode = com.manavahana.ui.LocalAppLanguage.current
     val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    val now = System.currentTimeMillis()
+    val isExpired = doc.expiryDate != null && doc.expiryDate > 0 && doc.expiryDate < now
+    val daysLeft = if (doc.expiryDate != null && doc.expiryDate > 0) ((doc.expiryDate - now) / (24 * 60 * 60 * 1000L)).toInt() else null
+    val isExpiringSoon = daysLeft != null && daysLeft in 0..30
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isExpired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+            else if (isExpiringSoon) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        border = if (isExpired) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+        else if (isExpiringSoon) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
+        else null,
         shape = RoundedCornerShape(12.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Topic, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(doc.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
-                Text("Category: ${doc.docType}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                if (doc.expiryDate != null && doc.expiryDate > 0) {
-                    Text("Expires on: ${sdf.format(Date(doc.expiryDate))}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!doc.documentPath.isNullOrBlank()) {
-                    IconButton(
-                        onClick = {
-                            try {
-                                val parsedUri = android.net.Uri.parse(doc.documentPath)
-                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                    setDataAndType(parsedUri, context.contentResolver.getType(parsedUri) ?: "*/*")
-                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                android.widget.Toast.makeText(context, "Opening safe local file sandbox view...", android.widget.Toast.LENGTH_SHORT).show()
-                            }
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = when {
+                                doc.docType.contains("Insurance", ignoreCase = true) -> Icons.Default.Shield
+                                doc.docType.contains("Pollution", ignoreCase = true) -> Icons.Default.Co2
+                                else -> Icons.Default.Topic
+                            },
+                            contentDescription = null,
+                            tint = if (isExpired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(doc.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                    Text("Category: ${doc.docType}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    if (doc.expiryDate != null && doc.expiryDate > 0) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val badgeText = when {
+                            isExpired -> if (langCode == "te") "🔴 కాలపరిమితి ముగిసింది (${-daysLeft!!} రోజుల క్రితం)" else "🔴 Expired ${-daysLeft!!} days ago"
+                            isExpiringSoon -> if (langCode == "te") "⚠️ ${daysLeft} రోజుల్లో ముగుస్తుంది" else "⚠️ Expires in $daysLeft days"
+                            else -> if (langCode == "te") "🟢 గడువు: ${sdf.format(Date(doc.expiryDate))}" else "🟢 Valid till: ${sdf.format(Date(doc.expiryDate))}"
                         }
-                    ) {
-                        Icon(Icons.Default.Visibility, contentDescription = "View Doc Status", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                        val badgeColor = when {
+                            isExpired -> MaterialTheme.colorScheme.error
+                            isExpiringSoon -> Color(0xFFB45309)
+                            else -> Color(0xFF047857)
+                        }
+                        Text(badgeText, fontSize = 11.sp, color = badgeColor, fontWeight = FontWeight.Bold)
                     }
                 }
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Doc File", Modifier.size(18.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!doc.documentPath.isNullOrBlank()) {
+                        IconButton(
+                            onClick = {
+                                try {
+                                    val parsedUri = android.net.Uri.parse(doc.documentPath)
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                        setDataAndType(parsedUri, context.contentResolver.getType(parsedUri) ?: "*/*")
+                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Opening safe local file sandbox view...", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Visibility, contentDescription = "View Doc Status", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Doc File", Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Doc File", Modifier.size(18.dp))
+                    }
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Doc File", Modifier.size(18.dp))
+            }
+
+            if (onRenew != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    FilledTonalButton(
+                        onClick = onRenew,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (langCode == "te") "పునరుద్ధరణ / పత్రం మార్పు" else "Renew / Replace Paper", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
