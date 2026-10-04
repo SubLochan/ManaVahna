@@ -131,11 +131,11 @@ fun DashboardScreen(
         val currentMonth = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
         val expensesSum = allExpenses.filter {
             it.vehicleId == selectedVehicle?.id &&
-                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
+            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.expenseDate)) == currentMonth
         }.sumOf { it.amount }
         val servicesSum = allServiceLogs.filter {
             it.vehicleId == selectedVehicle?.id &&
-                    SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
+            SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(it.serviceDate)) == currentMonth
         }.sumOf { it.cost }
         expensesSum + servicesSum
     }
@@ -244,7 +244,7 @@ fun DashboardScreen(
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
-
+                            
                             // Glowing notification dot mapping active expirations size
                             if (notificationBadgeEnabled) {
                                 val pinCount = if (allReminders.isNotEmpty()) allReminders.size else 1
@@ -330,10 +330,10 @@ fun DashboardScreen(
                             }
                             val versionStr = when {
                                 statusVer.isNotBlank() -> statusVer
-                                livePlayStoreVersion.isNotBlank() &&
-                                        !livePlayStoreVersion.startsWith("Checking") &&
-                                        !livePlayStoreVersion.startsWith("Not checked") &&
-                                        !livePlayStoreVersion.startsWith("Published") -> livePlayStoreVersion
+                                livePlayStoreVersion.isNotBlank() && 
+                                !livePlayStoreVersion.startsWith("Checking") && 
+                                !livePlayStoreVersion.startsWith("Not checked") && 
+                                !livePlayStoreVersion.startsWith("Published") -> livePlayStoreVersion
                                 else -> "New"
                             }
 
@@ -486,8 +486,8 @@ fun DashboardScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 TextButton(
-                                    onClick = {
-                                        viewModel.setBiometricPromptShown(true)
+                                    onClick = { 
+                                        viewModel.setBiometricPromptShown(true) 
                                     },
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
@@ -497,7 +497,7 @@ fun DashboardScreen(
                                         .testTag("biometric_skip_prompt_button")
                                 ) {
                                     Text(
-                                        text = if (langCode == "te") "దాటవేయి" else "Skip",
+                                        text = if (langCode == "te") "దాటవేయి" else "Skip", 
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -520,13 +520,13 @@ fun DashboardScreen(
                                         .testTag("biometric_enable_prompt_button")
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
+                                        imageVector = Icons.Default.Check, 
+                                        contentDescription = null, 
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (langCode == "te") "యాక్టివేట్ చేయి" else "Enable Shortcut",
+                                        text = if (langCode == "te") "యాక్టివేట్ చేయి" else "Enable Shortcut", 
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -778,7 +778,7 @@ fun DashboardScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
                         )
-
+                        
                         Text(
                             text = "See All",
                             fontSize = 13.sp,
@@ -925,7 +925,7 @@ fun DashboardScreen(
                         // Card 3: Switch Selectable Vehicles list
                         vehicles.forEach { veh ->
                             val isSelected = selectedVehicle?.id == veh.id
-
+                            
                             val borderStroke = if (isSelected) {
                                 BorderStroke(
                                     2.dp,
@@ -940,13 +940,13 @@ fun DashboardScreen(
                             } else {
                                 BorderStroke(1.dp, Color.DarkGray.copy(alpha = 0.5f))
                             }
-
+                            
                             val cardBgColor = if (isSelected) {
                                 Color(0xFF2E261F)
                             } else {
                                 Color(0xFF1C1C1E)
                             }
-
+                            
                             val cardModifier = if (isSelected) {
                                 Modifier
                                     .width(150.dp)
@@ -2056,13 +2056,13 @@ fun QuickActionChip(
         onClick = onClick,
         enabled = enabled,
         label = { Text(label, fontWeight = FontWeight.SemiBold) },
-        leadingIcon = {
+        leadingIcon = { 
             Icon(
-                icon,
-                contentDescription = null,
+                icon, 
+                contentDescription = null, 
                 modifier = Modifier.size(18.dp),
                 tint = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            )
+            ) 
         },
         colors = AssistChipDefaults.assistChipColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -2118,10 +2118,10 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
 
     // Component tab switcher
     var selectedTab by remember { mutableIntStateOf(0) } // 0 for Donut Visualizer, 1 for Dynamic Ledger Breakdowns
-
+    
     // Interactive segment highlight (auto-select category with maximum expense initially)
-    var selectedCategory by remember(categoryMap) {
-        mutableStateOf(categoryMap.keys.maxByOrNull { categoryMap[it] ?: 0.0 } ?: "Fuel")
+    var selectedCategory by remember(categoryMap) { 
+        mutableStateOf(categoryMap.keys.maxByOrNull { categoryMap[it] ?: 0.0 } ?: "Fuel") 
     }
 
     Card(
@@ -2206,7 +2206,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                     val highestCat = categoryMap.maxByOrNull { it.value }?.key ?: "None"
                     val highestAmt = categoryMap[highestCat] ?: 0.0
                     val highestPercentage = if (totalAmount > 0) (highestAmt / totalAmount) * 100 else 0.0
-
+                    
                     Box(
                         modifier = Modifier
                             .size(8.dp)
@@ -2252,10 +2252,10 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                                     val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
                                     val sweepAngle = ((amt / totalAmount) * 360f).toFloat()
                                     val isSelected = cat == selectedCategory
-
+                                    
                                     val strokeWidth = if (isSelected) 18.dp.toPx() else 11.dp.toPx()
                                     val diameterPadding = if (isSelected) 3.dp.toPx() else 8.dp.toPx()
-
+                                    
                                     drawArc(
                                         color = colors[index],
                                         startAngle = startAngle,
@@ -2277,7 +2277,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                             ) {
                                 val activeAmount = categoryMap[selectedCategory] ?: 0.0
                                 val activePercentage = (activeAmount / totalAmount) * 100
-
+                                
                                 Text(
                                     text = selectedCategory,
                                     fontSize = 11.sp,
@@ -2312,7 +2312,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                             categoryMap.entries.sortedByDescending { it.value }.take(5).forEach { (cat, amt) ->
                                 val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
                                 val isSelected = cat == selectedCategory
-
+                                
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -2361,7 +2361,7 @@ fun ExpensePieChartCard(expenses: List<Expense>) {
                         categoryMap.entries.sortedByDescending { it.value }.take(6).forEach { (cat, amt) ->
                             val index = expenseCategories.indexOf(cat).coerceAtLeast(0) % colors.size
                             val portion = (amt / totalAmount).toFloat()
-
+                            
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()

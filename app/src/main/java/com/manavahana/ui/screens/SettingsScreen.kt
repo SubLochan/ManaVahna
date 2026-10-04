@@ -386,7 +386,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Backup & Export Tools", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-
+                    
                     Text("Local Backup & Restore", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                     Text(
                         "ManaVahana is 100% offline-first. Save all your vehicles, logs, expenses, docs, and reminders as a local JSON file, or restore data instantly by choosing a local backup file.",
@@ -740,7 +740,7 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
                     )
-
+                    
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         TeluguBullet("కుంకుమ బొట్టు (Kumkuma) Red", "Represents protection, visual highlight, and festive identity.")
                         TeluguBullet("పసుపు తోరణం (Turmeric) Gold", "Represents auspicious beginnings, longevity, and bright visual safety.")
@@ -1156,8 +1156,8 @@ fun SettingsScreen(
 
     if (showPinSetupDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showPinSetupDialog = false
+            onDismissRequest = { 
+                showPinSetupDialog = false 
                 pinSetupText = ""
                 pinConfirmText = ""
                 pinSetupError = ""
@@ -1179,10 +1179,10 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-
+                    
                     OutlinedTextField(
                         value = pinSetupText,
-                        onValueChange = {
+                        onValueChange = { 
                             if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                                 pinSetupText = it
                                 pinSetupError = ""
@@ -1197,7 +1197,7 @@ fun SettingsScreen(
 
                     OutlinedTextField(
                         value = pinConfirmText,
-                        onValueChange = {
+                        onValueChange = { 
                             if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                                 pinConfirmText = it
                                 pinSetupError = ""
@@ -1243,8 +1243,8 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        showPinSetupDialog = false
+                    onClick = { 
+                        showPinSetupDialog = false 
                         pinSetupText = ""
                         pinConfirmText = ""
                         pinSetupError = ""
@@ -1258,8 +1258,8 @@ fun SettingsScreen(
 
     if (showPinDeactivateDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showPinDeactivateDialog = false
+            onDismissRequest = { 
+                showPinDeactivateDialog = false 
                 pinDeactivateText = ""
                 pinDeactivateError = ""
             },
@@ -1280,10 +1280,10 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-
+                    
                     OutlinedTextField(
                         value = pinDeactivateText,
-                        onValueChange = {
+                        onValueChange = { 
                             if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                                 pinDeactivateText = it
                                 pinDeactivateError = ""
@@ -1327,8 +1327,8 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        showPinDeactivateDialog = false
+                    onClick = { 
+                        showPinDeactivateDialog = false 
                         pinDeactivateText = ""
                         pinDeactivateError = ""
                     }
@@ -1368,7 +1368,7 @@ fun SettingsScreen(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-
+                    
                     Box(
                         modifier = Modifier
                             .size(80.dp)
@@ -1389,7 +1389,7 @@ fun SettingsScreen(
                             modifier = Modifier.size(48.dp)
                         )
                     }
-
+                    
                     Text(
                         text = if (langCode == "te") "స్కానింగ్ చేయడానికి తాకండి" else "TAP ICON TO SECURELY SCAN",
                         style = MaterialTheme.typography.labelSmall,

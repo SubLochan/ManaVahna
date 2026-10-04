@@ -1450,10 +1450,10 @@ fun DocumentVaultScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         val matchedDoc = allDocuments.find { d ->
                                             d.vehicleId == reminder.vehicleId && (
-                                                    d.title.equals(reminder.title.removeSuffix(" Expiry"), ignoreCase = true) ||
-                                                            reminder.title.contains(d.title, ignoreCase = true) ||
-                                                            d.docType.equals(reminder.category, ignoreCase = true)
-                                                    )
+                                                d.title.equals(reminder.title.removeSuffix(" Expiry"), ignoreCase = true) ||
+                                                reminder.title.contains(d.title, ignoreCase = true) ||
+                                                d.docType.equals(reminder.category, ignoreCase = true)
+                                            )
                                         }
                                         if (matchedDoc != null) {
                                             FilledTonalButton(
