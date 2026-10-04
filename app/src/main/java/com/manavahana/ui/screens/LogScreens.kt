@@ -1426,10 +1426,10 @@ fun DocumentVaultScreen(
                             loomingReminders.forEach { reminder ->
                                 val daysLeft = ((reminder.reminderDate - currentTime) / (24 * 60 * 60 * 1000L)).toInt()
                                 val statusText = when {
-                                    daysLeft < 0 -> if (langCode == "te") "🔴 కాలపరిమితి ముగిసింది (${-daysLeft} రోజుల క్రితం)" else if (langCode == "hi") "🔴 समय सीमा समाप्त हुआ (${-daysLeft} दिन पहले)" else "🔴 Expired ${-daysLeft} days ago"
-                                    daysLeft == 0 -> if (langCode == "te") "⚠️ ఈరోజే ముగుస్తుంది" else if (langCode == "hi") "⚠️ आज समाप्त हो रहा है" else "⚠️ Expires today!"
-                                    daysLeft == 1 -> if (langCode == "te") "⏳ రేపే ముగుస్తుంది" else if (langCode == "hi") "⏳ कल समाप्त होगा" else "⏳ Expires tomorrow!"
-                                    else -> if (langCode == "te") "⏳ ${daysLeft} రోజుల్లో ముగుస్తుంది" else if (langCode == "hi") "⏳ ${daysLeft} दिनों में समाप्त होगा" else "⏳ ${daysLeft} days left"
+                                    daysLeft < 0 -> if (langCode == "te") "🔴 కాలపరిమితి ముగిసింది (Missed ${-daysLeft} రోజుల క్రితం)" else if (langCode == "hi") "🔴 Missed (${-daysLeft} दिन पहले)" else "🔴 Missed (${-daysLeft} days ago)"
+                                    daysLeft == 0 -> if (langCode == "te") "⚠️ ఈరోజే ముగుస్తుంది (Due Today)" else if (langCode == "hi") "⚠️ Due Today" else "⚠️ Due Today!"
+                                    daysLeft == 1 -> if (langCode == "te") "⏳ రేపే ముగుస్తుంది (Due Tomorrow)" else if (langCode == "hi") "⏳ Due Tomorrow" else "⏳ Due Tomorrow!"
+                                    else -> if (langCode == "te") "⏳ ${daysLeft} రోజుల్లో ముగుస్తుంది (Due in ${daysLeft}d)" else if (langCode == "hi") "⏳ Due in ${daysLeft} days" else "⏳ Due in ${daysLeft} days"
                                 }
                                 Row(
                                     modifier = Modifier
@@ -1440,15 +1440,20 @@ fun DocumentVaultScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(reminder.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onErrorContainer)
-                                        Text(statusText, fontSize = 11.sp, color = if (daysLeft <= 3) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f))
+                                        Text(
+                                            statusText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = if (daysLeft < 0) Color(0xFFFF6E6E) else if (daysLeft <= 3) Color(0xFFFFB74D) else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                                        )
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         val matchedDoc = allDocuments.find { d ->
                                             d.vehicleId == reminder.vehicleId && (
-                                                d.title.equals(reminder.title.removeSuffix(" Expiry"), ignoreCase = true) ||
-                                                reminder.title.contains(d.title, ignoreCase = true) ||
-                                                d.docType.equals(reminder.category, ignoreCase = true)
-                                            )
+                                                    d.title.equals(reminder.title.removeSuffix(" Expiry"), ignoreCase = true) ||
+                                                            reminder.title.contains(d.title, ignoreCase = true) ||
+                                                            d.docType.equals(reminder.category, ignoreCase = true)
+                                                    )
                                         }
                                         if (matchedDoc != null) {
                                             FilledTonalButton(

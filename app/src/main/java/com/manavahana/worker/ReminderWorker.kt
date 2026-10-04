@@ -48,14 +48,14 @@ class ReminderWorker(
                 val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                 val formattedDate = sdf.format(Date(document.expiryDate))
                 val title = when (alertType) {
-                    "7_days_before" -> "${document.docType}: ${document.title} త్వరలో ముగియనుంది (Expires in 7 Days)"
-                    "1_day_before" -> "${document.docType}: ${document.title} రేపటితో ముగియనుంది (Expires Tomorrow)"
-                    else -> "${document.docType}: ${document.title} కాలపరిమితి ఈరోజే ముగుస్తుంది (Expires Today)"
+                    "7_days_before" -> "${document.docType}: ${document.title} (Due in 7 Days / త్వరలో ముగియనుంది)"
+                    "1_day_before" -> "${document.docType}: ${document.title} (Due Tomorrow / రేపటితో ముగియనుంది)"
+                    else -> "${document.docType}: ${document.title} (Missed / కాలపరిమితి ముగిసింది)"
                 }
                 val message = when (alertType) {
-                    "7_days_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు 7 రోజుల్లో (${formattedDate}) ముగుస్తుంది. దయచేసి అప్‌డేట్ చూసుకోండి!"
-                    "1_day_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు రేపటితో (${formattedDate}) ముగుస్తుంది. దయచేసి సిద్ధం చేసుకోండి!"
-                    else -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు ఈరోజే (${formattedDate}) ముగిసింది. దయచేసి వెంటనే అప్‌డేట్ చేయండి!"
+                    "7_days_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు 7 రోజుల్లో (${formattedDate}) ముగుస్తుంది (Due Soon). దయచేసి అప్‌డేట్ చూసుకోండి!"
+                    "1_day_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు రేపటితో (${formattedDate}) ముగుస్తుంది (Due Tomorrow). దయచేసి సిద్ధం చేసుకోండి!"
+                    else -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు (${formattedDate}) నాటికి ముగిసింది (Missed). దయచేసి వెంటనే అప్‌డేట్ చేయండి!"
                 }
                 sendNotification(document.id + 40000, title, message)
             }
@@ -74,13 +74,13 @@ class ReminderWorker(
             if (diff in 0..notifyThreshold) {
                 sendNotification(
                     id = reminder.id + 10000,
-                    title = "ManaVahana: $reminderTitle (త్వరలో ఉంది/Upcoming)",
-                    message = reminder.description.ifEmpty { "మీకు ఒక రిమైండర్ టాస్క్ ఉంది." }
+                    title = "ManaVahana: $reminderTitle (Due / త్వరలో ఉంది)",
+                    message = reminder.description.ifEmpty { "మీకు ఒక రిమైండర్ టాస్క్ ఉంది. గడువు: ${sdf.format(Date(reminder.reminderDate))}" }
                 )
             } else if (diff < 0) {
                 sendNotification(
                     id = reminder.id + 10000,
-                    title = "ManaVahana: $reminderTitle (గడువు ముగిసింది/Overdue)",
+                    title = "ManaVahana: $reminderTitle (Missed / గడువు ముగిసింది)",
                     message = "గడువు తేదీ: ${sdf.format(Date(reminder.reminderDate))}. ${reminder.description}"
                 )
             }
@@ -95,14 +95,14 @@ class ReminderWorker(
                 if (insDiff in 0..notifyThreshold) {
                     sendNotification(
                         id = vehicle.id + 20000,
-                        title = "${vehicle.vehicleName} ఇన్సూరెన్స్ త్వరలో ముగియనుంది",
-                        message = "మీ ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగియనుంది. ఇప్పుడే రిన్యూ చేసుకోండి!"
+                        title = "${vehicle.vehicleName} ఇన్సూరెన్స్ (Due Soon)",
+                        message = "మీ ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగియనుంది (Due). ఇప్పుడే రిన్యూ చేసుకోండి!"
                     )
                 } else if (insDiff < 0) {
                     sendNotification(
                         id = vehicle.id + 20000,
-                        title = "${vehicle.vehicleName} ఇన్సూరెన్స్ గడువు ముగిసింది!",
-                        message = "మీ వాహన ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగిసింది. దయచేసి వెంటనే రిన్యూ చేయండి!"
+                        title = "${vehicle.vehicleName} ఇన్సూరెన్స్ (Missed / గడువు ముగిసింది!)",
+                        message = "మీ వాహన ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగిసింది (Missed). దయచేసి వెంటనే రిన్యూ చేయండి!"
                     )
                 }
             }
@@ -113,14 +113,14 @@ class ReminderWorker(
                 if (polDiff in 0..notifyThreshold) {
                     sendNotification(
                         id = vehicle.id + 30000,
-                        title = "${vehicle.vehicleName} పొల్యూషన్ సర్టిఫికేట్ అలర్ట్",
-                        message = "మీ పొల్యూషన్ సర్టిఫికേట్ ${sdf.format(Date(vehicle.pollutionExpiry))} తో ముగియనుంది. తనిఖీ చేయించుకోండి!"
+                        title = "${vehicle.vehicleName} పొల్యూషన్ సర్టిఫికేట్ (Due Soon)",
+                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(vehicle.pollutionExpiry))} తో ముగియనుంది (Due). తనిఖీ చేయించుకోండి!"
                     )
                 } else if (polDiff < 0) {
                     sendNotification(
                         id = vehicle.id + 30000,
-                        title = "${vehicle.vehicleName} పొల్యూషన్ గడువు ముగిసింది!",
-                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(vehicle.pollutionExpiry))} నాటికి ముగిసింది. వెంటనే కొత్తది పొందండి!"
+                        title = "${vehicle.vehicleName} పొల్యూషన్ సర్టిఫికేట్ (Missed / గడువు ముగిసింది!)",
+                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(vehicle.pollutionExpiry))} నాటికి ముగిసింది (Missed). వెంటనే కొత్తది పొందండి!"
                     )
                 }
             }
@@ -135,14 +135,14 @@ class ReminderWorker(
                 if (docDiff in 0..notifyThreshold) {
                     sendNotification(
                         id = document.id + 40000,
-                        title = "${document.docType}: ${document.title} త్వరలో ముగుస్తుంది",
-                        message = "మీ డాక్యుమెంట్ గడువు ${sdf.format(Date(expiry))} తేదీతో ముగియనుంది!"
+                        title = "${document.docType}: ${document.title} (Due Soon)",
+                        message = "మీ డాక్యుమెంట్ గడువు ${sdf.format(Date(expiry))} తేదీతో ముగియనుంది (Due Soon)!"
                     )
                 } else if (docDiff < 0) {
                     sendNotification(
                         id = document.id + 40000,
-                        title = "${document.docType}: ${document.title} గడువు ముగిసింది!",
-                        message = "మీ సేవ్ చేసిన డాక్యుమెంట్ ${sdf.format(Date(expiry))} తేదీతో ముగిసింది. దయచేసి అప్‌డేట్ చేయండి!"
+                        title = "${document.docType}: ${document.title} (Missed / గడువు ముగిసింది!)",
+                        message = "మీ సేవ్ చేసిన డాక్యుమెంట్ ${sdf.format(Date(expiry))} తేదీతో ముగిసింది (Missed). దయచేసి అప్‌డేట్ చేయండి!"
                     )
                 }
             }

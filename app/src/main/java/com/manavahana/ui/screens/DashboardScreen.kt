@@ -73,6 +73,7 @@ fun DashboardScreen(
     var reportingVehicleName by remember { mutableStateOf("") }
     var showRemindersDialog by remember { mutableStateOf(false) }
     var notificationBadgeEnabled by remember { mutableStateOf(true) }
+    var notificationFilter by remember { mutableStateOf("All") } // "All", "Due", "Missed"
     var showDownloadOldReportsDialog by remember { mutableStateOf(false) }
     var oldReportInitialVehicleId by remember { mutableStateOf<Int?>(null) }
 
@@ -251,7 +252,7 @@ fun DashboardScreen(
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clip(CircleShape)
-                                        .background(Color.Red)
+                                        .background(Color(0xFFFF3B30))
                                         .align(Alignment.TopEnd)
                                         .offset(x = 2.dp, y = (-2).dp),
                                     contentAlignment = Alignment.Center
@@ -1335,7 +1336,7 @@ fun DashboardScreen(
                                     Icon(
                                         imageVector = Icons.Default.PictureAsPdf,
                                         contentDescription = null,
-                                        tint = Color.Red,
+                                        tint = Color(0xFFFF5252),
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -1445,18 +1446,46 @@ fun DashboardScreen(
                                 text = "See All",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFFA000)
+                                color = Color(0xFFFFA000),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { showRemindersDialog = true }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val now = System.currentTimeMillis()
+                            val simpleFormatter = SimpleDateFormat("dd MMM", Locale.getDefault())
                             for (reminder in allReminders.take(4)) {
-                                val isUrgent = (reminder.reminderDate - System.currentTimeMillis()) < 15 * 24 * 60 * 60 * 1000L
-                                val containerColor = if (isUrgent) Color(0xFF2E191A) else Color(0xFF1B1B1D)
-                                val borderStrokeColor = if (isUrgent) Color.Red.copy(alpha = 0.5f) else Color.DarkGray
-                                val iconColor = if (isUrgent) Color.Red else Color(0xFFFFA000)
+                                val isMissed = now > reminder.reminderDate
+                                val isDueNear = !isMissed && (reminder.reminderDate - now) < 15 * 24 * 60 * 60 * 1000L
+
+                                val containerColor = when {
+                                    isMissed -> Color(0xFF2B181A)
+                                    isDueNear -> Color(0xFF251F14)
+                                    else -> Color(0xFF1B1B1D)
+                                }
+                                val borderStrokeColor = when {
+                                    isMissed -> Color(0xFFFF6E6E).copy(alpha = 0.5f)
+                                    isDueNear -> Color(0xFFFFA000).copy(alpha = 0.45f)
+                                    else -> Color.DarkGray
+                                }
+                                val iconColor = when {
+                                    isMissed -> Color(0xFFFF6E6E)
+                                    else -> Color(0xFFFFA000)
+                                }
+                                val statusText = when {
+                                    isMissed -> "Missed: " + simpleFormatter.format(Date(reminder.reminderDate))
+                                    else -> "Due: " + simpleFormatter.format(Date(reminder.reminderDate))
+                                }
+                                val statusColor = when {
+                                    isMissed -> Color(0xFFFF6E6E) // bright visible coral red
+                                    isDueNear -> Color(0xFFFFB74D) // warm bright gold
+                                    else -> Color(0xFF94A3B8)
+                                }
 
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1516,12 +1545,11 @@ fun DashboardScreen(
                                             }
                                         }
 
-                                        val simpleFormatter = SimpleDateFormat("dd MMM", Locale.getDefault())
                                         Text(
-                                            simpleFormatter.format(Date(reminder.reminderDate)),
+                                            statusText,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.ExtraBold,
-                                            color = if (isUrgent) Color.Red else Color(0xFFFFA000)
+                                            color = statusColor
                                         )
                                     }
                                 }
@@ -1588,128 +1616,388 @@ fun DashboardScreen(
     }
 
     if (showRemindersDialog) {
+        val now = remember { System.currentTimeMillis() }
+        val displayedNotifications = remember(allReminders, now) {
+            if (allReminders.isEmpty()) {
+                listOf(
+                    Reminder(
+                        id = 0,
+                        title = "Insurance Expiry Renewal",
+                        description = "Standard insurance policy expired 2 days ago. Immediate renewal required to prevent standard coverage lapse.",
+                        reminderDate = now - 2 * 24 * 3600 * 1000L,
+                        category = "Insurance",
+                        isCompleted = false,
+                        vehicleId = vehicles.firstOrNull()?.id
+                    ),
+                    Reminder(
+                        id = 0,
+                        title = "Periodic Service Due",
+                        description = "Engine oil and filter inspection recommended within the next 4 days.",
+                        reminderDate = now + 4 * 24 * 3600 * 1000L,
+                        category = "Service",
+                        isCompleted = false,
+                        vehicleId = vehicles.firstOrNull()?.id
+                    ),
+                    Reminder(
+                        id = 0,
+                        title = "PUC Pollution Certificate",
+                        description = "Emission test renewal due in 7 days. Visit your nearest emission center.",
+                        reminderDate = now + 7 * 24 * 3600 * 1000L,
+                        category = "Pollution",
+                        isCompleted = false,
+                        vehicleId = vehicles.firstOrNull()?.id
+                    )
+                )
+            } else {
+                allReminders.filter { !it.isCompleted }
+            }
+        }
+
+        val missedList = remember(displayedNotifications, now) {
+            displayedNotifications.filter { it.reminderDate < now }
+        }
+        val dueList = remember(displayedNotifications, now) {
+            displayedNotifications.filter { it.reminderDate >= now }
+        }
+        val filteredList = remember(displayedNotifications, notificationFilter, now) {
+            when (notificationFilter) {
+                "Due" -> dueList.sortedBy { it.reminderDate }
+                "Missed" -> missedList.sortedByDescending { it.reminderDate }
+                else -> displayedNotifications.sortedWith(
+                    compareBy<Reminder> { if (it.reminderDate < now) 0 else 1 }
+                        .thenBy { it.reminderDate }
+                )
+            }
+        }
+
         AlertDialog(
             onDismissRequest = {
                 notificationBadgeEnabled = false
                 showRemindersDialog = false
             },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color(0xFF161618),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFE2E8F0),
             title = {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications Icon",
-                        tint = Color(0xFFFFA000)
-                    )
-                    Text(
-                        text = "Missed Notifications",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFA000).copy(alpha = 0.16f))
+                                .border(1.dp, Color(0xFFFFA000).copy(alpha = 0.35f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = "Notifications",
+                                tint = Color(0xFFFFA000),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Notifications & Alerts",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "${dueList.size} Due • ${missedList.size} Missed",
+                                fontSize = 11.5.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            notificationBadgeEnabled = false
+                            showRemindersDialog = false
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             },
             text = {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 350.dp)
+                        .heightIn(max = 440.dp)
                 ) {
-                    val displayedNotifications = remember(allReminders) {
-                        if (allReminders.isEmpty()) {
-                            listOf(
-                                Reminder(
-                                    title = "Periodic Service Overdue",
-                                    description = "Your primary vehicle is overdue for periodic engine oil filter replacement.",
-                                    reminderDate = System.currentTimeMillis() - 12 * 3600 * 1000L,
-                                    category = "Service",
-                                    isCompleted = false,
-                                    vehicleId = null
-                                ),
-                                Reminder(
-                                    title = "Insurance Expiry Renewal",
-                                    description = "Immediate renewal recommended to prevent standard coverage lapse.",
-                                    reminderDate = System.currentTimeMillis() - 2 * 24 * 3600 * 1000L,
-                                    category = "Insurance",
-                                    isCompleted = false,
-                                    vehicleId = null
-                                ),
-                                Reminder(
-                                    title = "PUC Pollution Check",
-                                    description = "Your PUC certificate is nearing its safety emission standard threshold.",
-                                    reminderDate = System.currentTimeMillis() - 3 * 24 * 3600 * 1000L,
-                                    category = "Pollution",
-                                    isCompleted = false,
-                                    vehicleId = null
-                                )
+                    // Filter Chips Row: All, Due, Missed
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FilterChip(
+                            selected = notificationFilter == "All",
+                            onClick = { notificationFilter = "All" },
+                            label = { Text("All (${displayedNotifications.size})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFFFA000).copy(alpha = 0.22f),
+                                selectedLabelColor = Color(0xFFFFA000),
+                                containerColor = Color.White.copy(alpha = 0.05f),
+                                labelColor = Color(0xFF94A3B8)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = notificationFilter == "All",
+                                selectedBorderColor = Color(0xFFFFA000),
+                                borderColor = Color(0xFF333338)
                             )
-                        } else {
-                            allReminders
-                        }
+                        )
+                        FilterChip(
+                            selected = notificationFilter == "Due",
+                            onClick = { notificationFilter = "Due" },
+                            label = { Text("Due (${dueList.size})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFF59E0B).copy(alpha = 0.22f),
+                                selectedLabelColor = Color(0xFFFFB74D),
+                                containerColor = Color.White.copy(alpha = 0.05f),
+                                labelColor = Color(0xFF94A3B8)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = notificationFilter == "Due",
+                                selectedBorderColor = Color(0xFFF59E0B),
+                                borderColor = Color(0xFF333338)
+                            )
+                        )
+                        FilterChip(
+                            selected = notificationFilter == "Missed",
+                            onClick = { notificationFilter = "Missed" },
+                            label = { Text("Missed (${missedList.size})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.22f),
+                                selectedLabelColor = Color(0xFFFF6E6E),
+                                containerColor = Color.White.copy(alpha = 0.05f),
+                                labelColor = Color(0xFF94A3B8)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = notificationFilter == "Missed",
+                                selectedBorderColor = Color(0xFFFF6E6E),
+                                borderColor = Color(0xFF333338)
+                            )
+                        )
                     }
 
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(displayedNotifications) { reminder ->
-                            val simpleFormatter = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B1D)),
-                                border = BorderStroke(1.dp, Color.DarkGray),
-                                shape = RoundedCornerShape(12.dp)
+                    if (filteredList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 36.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
+                                Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF10B981).copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(34.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White.copy(alpha = 0.05f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = when (reminder.category) {
-                                                "Insurance" -> Icons.Default.Shield
-                                                "Pollution" -> Icons.Default.Co2
-                                                "Service" -> Icons.Default.Build
-                                                "EMI" -> Icons.Default.Payments
-                                                else -> Icons.Default.Notifications
-                                            },
-                                            contentDescription = null,
-                                            tint = Color(0xFFFFA000),
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF34D399),
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "All Caught Up!",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = when (notificationFilter) {
+                                        "Missed" -> "No missed alerts. Everything is on schedule!"
+                                        "Due" -> "No items due soon. Your vehicles are all set!"
+                                        else -> "No notifications or alerts pending."
+                                    },
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(filteredList) { reminder ->
+                                val simpleFormatter = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
+                                val isMissed = now > reminder.reminderDate
+
+                                val cardContainer = if (isMissed) Color(0xFF241517) else Color(0xFF1E1C18)
+                                val cardBorderColor = if (isMissed) Color(0xFFFF6E6E).copy(alpha = 0.35f) else Color(0xFFFFA000).copy(alpha = 0.35f)
+
+                                // Status badge calculation with bright visible colors
+                                val statusTextColor = if (isMissed) Color(0xFFFF6E6E) else Color(0xFFFFB74D)
+                                val statusBadgeBg = if (isMissed) Color(0xFFEF4444).copy(alpha = 0.16f) else Color(0xFFF59E0B).copy(alpha = 0.16f)
+                                val statusBadgeBorder = if (isMissed) Color(0xFFFF6E6E).copy(alpha = 0.45f) else Color(0xFFFFA000).copy(alpha = 0.45f)
+                                val statusText = if (isMissed) {
+                                    val daysOverdue = ((now - reminder.reminderDate) / (24 * 60 * 60 * 1000L)).toInt()
+                                    if (daysOverdue > 0) {
+                                        "Missed ($daysOverdue ${if (daysOverdue == 1) "day" else "days"} ago)"
+                                    } else {
+                                        "Missed: " + simpleFormatter.format(Date(reminder.reminderDate))
                                     }
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = reminder.title,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = reminder.description,
-                                            fontSize = 11.sp,
-                                            color = Color.Gray,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Missed: " + simpleFormatter.format(Date(reminder.reminderDate)),
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color.Red.copy(alpha = 0.8f)
-                                        )
+                                } else {
+                                    val daysLeft = ((reminder.reminderDate - now) / (24 * 60 * 60 * 1000L)).toInt()
+                                    when {
+                                        daysLeft == 0 -> "Due: Today (" + simpleFormatter.format(Date(reminder.reminderDate)) + ")"
+                                        daysLeft == 1 -> "Due: Tomorrow (" + simpleFormatter.format(Date(reminder.reminderDate)) + ")"
+                                        daysLeft in 2..30 -> "Due in $daysLeft days"
+                                        else -> "Due: " + simpleFormatter.format(Date(reminder.reminderDate))
+                                    }
+                                }
+
+                                val vehicle = vehicles.find { it.id == reminder.vehicleId }
+
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = cardContainer),
+                                    border = BorderStroke(1.dp, cardBorderColor),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        // Category icon
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    when (reminder.category) {
+                                                        "Insurance" -> Color(0xFF38BDF8).copy(alpha = 0.14f)
+                                                        "Pollution" -> Color(0xFF34D399).copy(alpha = 0.14f)
+                                                        "Service" -> Color(0xFFFBBF24).copy(alpha = 0.14f)
+                                                        "EMI" -> Color(0xFFA78BFA).copy(alpha = 0.14f)
+                                                        else -> if (isMissed) Color(0xFFFF6E6E).copy(alpha = 0.14f) else Color(0xFFFFA000).copy(alpha = 0.14f)
+                                                    }
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = when (reminder.category) {
+                                                    "Insurance" -> Icons.Default.Shield
+                                                    "Pollution" -> Icons.Default.Co2
+                                                    "Service" -> Icons.Default.Build
+                                                    "EMI" -> Icons.Default.Payments
+                                                    else -> if (isMissed) Icons.Default.ErrorOutline else Icons.Default.Notifications
+                                                },
+                                                contentDescription = null,
+                                                tint = when (reminder.category) {
+                                                    "Insurance" -> Color(0xFF38BDF8)
+                                                    "Pollution" -> Color(0xFF34D399)
+                                                    "Service" -> Color(0xFFFBBF24)
+                                                    "EMI" -> Color(0xFFA78BFA)
+                                                    else -> if (isMissed) Color(0xFFFF6E6E) else Color(0xFFFFA000)
+                                                },
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            if (vehicle != null) {
+                                                Text(
+                                                    text = "${vehicle.vehicleName} • ${vehicle.vehicleNumber}",
+                                                    fontSize = 10.5.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color(0xFFFFA000)
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                            }
+
+                                            Text(
+                                                text = reminder.title,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = reminder.description,
+                                                fontSize = 11.5.sp,
+                                                color = Color(0xFFCBD5E1),
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Status pill: Due vs Missed with high-contrast text color
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(statusBadgeBg)
+                                                    .border(1.dp, statusBadgeBorder, RoundedCornerShape(6.dp))
+                                                    .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (isMissed) Icons.Default.ErrorOutline else Icons.Default.Schedule,
+                                                        contentDescription = null,
+                                                        tint = statusTextColor,
+                                                        modifier = Modifier.size(11.dp)
+                                                    )
+                                                    Text(
+                                                        text = statusText,
+                                                        fontSize = 10.5.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = statusTextColor
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Mark completed checkmark
+                                        IconButton(
+                                            onClick = {
+                                                if (reminder.id != 0) {
+                                                    viewModel.toggleReminderCompleted(reminder)
+                                                }
+                                                Toast.makeText(context, "Reminder marked as completed!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(34.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Mark Resolved",
+                                                tint = if (isMissed) Color(0xFFFF6E6E) else Color(0xFFFFA000),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1722,9 +2010,22 @@ fun DashboardScreen(
                     onClick = {
                         notificationBadgeEnabled = false
                         showRemindersDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA000)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Done", color = Color(0xFF1A1816), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        notificationBadgeEnabled = false
+                        showRemindersDialog = false
+                        Toast.makeText(context, "Notifications cleared", Toast.LENGTH_SHORT).show()
                     }
                 ) {
-                    Text("Close")
+                    Text("Clear Badge", color = Color(0xFF94A3B8))
                 }
             }
         )
