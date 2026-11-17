@@ -367,8 +367,8 @@ fun QuickAddFuelDialogContent(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.DirectionsCar,
-                                        contentDescription = null,
+                                        imageVector = com.manavahana.ui.screens.getVehicleIcon(currentVeh.vehicleType),
+                                        contentDescription = currentVeh.vehicleType,
                                         tint = Color(0xFFFFA000),
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -394,6 +394,14 @@ fun QuickAddFuelDialogContent(
                             ) {
                                 vehicles.forEach { v ->
                                     DropdownMenuItem(
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = com.manavahana.ui.screens.getVehicleIcon(v.vehicleType),
+                                                contentDescription = v.vehicleType,
+                                                tint = Color(0xFFFFA000),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        },
                                         text = {
                                             Text("${v.vehicleName} (${v.vehicleNumber})")
                                         },

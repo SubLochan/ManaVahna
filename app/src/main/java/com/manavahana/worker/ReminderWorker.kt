@@ -22,6 +22,123 @@ class ReminderWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
+    data class ExpiryResolution(
+        val latestDocExpiryByVehicleAndCat: Map<Pair<Int, String>, Long>,
+        val effectiveVehicleInsuranceExpiry: Map<Int, Long>,
+        val effectiveVehiclePollutionExpiry: Map<Int, Long>,
+        val effectiveExpiryByVehicleAndCat: Map<Pair<Int, String>, Long>
+    )
+
+    companion object {
+        const val DAY_MS = 24 * 60 * 60 * 1000L
+        const val NOTIFY_THRESHOLD_MS = 7 * DAY_MS
+
+        fun normalizeCategory(typeOrCategory: String?): String? {
+            if (typeOrCategory.isNullOrBlank()) return null
+            return when {
+                typeOrCategory.contains("Insurance", ignoreCase = true) -> "Insurance"
+                typeOrCategory.contains("Pollution", ignoreCase = true) ||
+                    typeOrCategory.equals("PUC", ignoreCase = true) ||
+                    typeOrCategory.contains("PUC ", ignoreCase = true) -> "Pollution"
+                typeOrCategory.contains("License", ignoreCase = true) -> "License"
+                else -> null
+            }
+        }
+
+        fun shouldTriggerDirectedDocAlert(
+            expiryDate: Long?,
+            alertType: String,
+            expectedExpiry: Long,
+            currentTime: Long
+        ): Boolean {
+            if (expiryDate == null || expiryDate <= 0L) return false
+            if (expectedExpiry > 0L && expiryDate != expectedExpiry) return false
+            val diff = expiryDate - currentTime
+            return when (alertType) {
+                "7_days_before" -> diff <= 8 * DAY_MS
+                "1_day_before" -> diff <= 2 * DAY_MS
+                else -> diff <= 1 * DAY_MS
+            }
+        }
+
+        fun resolveExpiries(
+            vehicles: List<Vehicle>,
+            documents: List<Document>
+        ): ExpiryResolution {
+            val latestDocExpiryByVehicleAndCat = mutableMapOf<Pair<Int, String>, Long>()
+            for (doc in documents) {
+                val expiry = doc.expiryDate ?: continue
+                if (expiry <= 0L) continue
+                val cat = normalizeCategory(doc.docType) ?: continue
+                val key = doc.vehicleId to cat
+                val currentMax = latestDocExpiryByVehicleAndCat[key] ?: 0L
+                if (expiry > currentMax) {
+                    latestDocExpiryByVehicleAndCat[key] = expiry
+                }
+            }
+
+            val effectiveVehicleInsuranceExpiry = mutableMapOf<Int, Long>()
+            val effectiveVehiclePollutionExpiry = mutableMapOf<Int, Long>()
+            val effectiveExpiryByVehicleAndCat = latestDocExpiryByVehicleAndCat.toMutableMap()
+
+            for (vehicle in vehicles) {
+                val docIns = latestDocExpiryByVehicleAndCat[vehicle.id to "Insurance"] ?: 0L
+                val effIns = maxOf(vehicle.insuranceExpiry, docIns)
+                effectiveVehicleInsuranceExpiry[vehicle.id] = effIns
+                if (effIns > 0L) {
+                    effectiveExpiryByVehicleAndCat[vehicle.id to "Insurance"] = effIns
+                }
+
+                val docPol = latestDocExpiryByVehicleAndCat[vehicle.id to "Pollution"] ?: 0L
+                val effPol = maxOf(vehicle.pollutionExpiry, docPol)
+                effectiveVehiclePollutionExpiry[vehicle.id] = effPol
+                if (effPol > 0L) {
+                    effectiveExpiryByVehicleAndCat[vehicle.id to "Pollution"] = effPol
+                }
+            }
+
+            return ExpiryResolution(
+                latestDocExpiryByVehicleAndCat = latestDocExpiryByVehicleAndCat,
+                effectiveVehicleInsuranceExpiry = effectiveVehicleInsuranceExpiry,
+                effectiveVehiclePollutionExpiry = effectiveVehiclePollutionExpiry,
+                effectiveExpiryByVehicleAndCat = effectiveExpiryByVehicleAndCat
+            )
+        }
+
+        fun isDocumentSuperseded(
+            document: Document,
+            latestDocExpiryByVehicleAndCat: Map<Pair<Int, String>, Long>,
+            currentTime: Long,
+            notifyThresholdMs: Long = NOTIFY_THRESHOLD_MS
+        ): Boolean {
+            val expiry = document.expiryDate ?: return false
+            if (expiry <= 0L) return false
+            val cat = normalizeCategory(document.docType)
+            if (cat != "Insurance" && cat != "Pollution") return false
+            val latest = latestDocExpiryByVehicleAndCat[document.vehicleId to cat] ?: return false
+            return latest > expiry && (latest - currentTime) > notifyThresholdMs
+        }
+
+        fun isStalePreRenewalReminder(
+            reminder: Reminder,
+            effectiveExpiryByVehicleAndCat: Map<Pair<Int, String>, Long>,
+            currentTime: Long,
+            notifyThresholdMs: Long = NOTIFY_THRESHOLD_MS
+        ): Boolean {
+            if (reminder.isCompleted) return false
+            val vehicleId = reminder.vehicleId ?: return false
+            val cat = normalizeCategory(reminder.category) ?: normalizeCategory(reminder.title) ?: return false
+            val effectiveExpiry = effectiveExpiryByVehicleAndCat[vehicleId to cat] ?: return false
+            if (effectiveExpiry <= currentTime + notifyThresholdMs) return false
+            val looksLikeAutoExpiryReminder =
+                reminder.title.endsWith("Expiry", ignoreCase = true) ||
+                    reminder.title.contains("Renewal", ignoreCase = true) ||
+                    reminder.description.contains("expiring", ignoreCase = true) ||
+                    reminder.description.contains("Renew", ignoreCase = true)
+            return looksLikeAutoExpiryReminder && reminder.reminderDate < effectiveExpiry - (3 * DAY_MS)
+        }
+    }
+
     override suspend fun doWork(): Result {
         val app = applicationContext as? ManaVahanaApplication ?: return Result.failure()
         val repository = app.repository
@@ -38,13 +155,22 @@ class ReminderWorker(
             }
         }
 
+        val currentTime = System.currentTimeMillis()
+        val vehicles = repository.allVehicles.firstOrNull() ?: emptyList()
+        val documents = repository.allDocuments.firstOrNull() ?: emptyList()
+        val resolution = resolveExpiries(vehicles, documents)
+
         // Check if this was a directed, scheduled document expiry alarm
-        val docId = inputData.getInt("document_id", -1)
+        val docId = inputData.getInt(DocumentNotificationScheduler.EXTRA_DOCUMENT_ID, -1)
         if (docId != -1) {
-            val alertType = inputData.getString("alert_type") ?: "exact_day"
-            val documents = repository.allDocuments.firstOrNull() ?: emptyList()
+            val alertType = inputData.getString(DocumentNotificationScheduler.EXTRA_ALERT_TYPE) ?: "exact_day"
+            val expectedExpiry = inputData.getLong(DocumentNotificationScheduler.EXTRA_EXPECTED_EXPIRY, -1L)
             val document = documents.find { it.id == docId }
-            if (document != null && document.expiryDate != null) {
+            val isValidAlert = document != null &&
+                shouldTriggerDirectedDocAlert(document.expiryDate, alertType, expectedExpiry, currentTime) &&
+                !isDocumentSuperseded(document, resolution.latestDocExpiryByVehicleAndCat, currentTime)
+
+            if (isValidAlert && document != null && document.expiryDate != null) {
                 val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                 val formattedDate = sdf.format(Date(document.expiryDate))
                 val title = when (alertType) {
@@ -57,94 +183,133 @@ class ReminderWorker(
                     "1_day_before" -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు రేపటితో (${formattedDate}) ముగుస్తుంది (Due Tomorrow). దయచేసి సిద్ధం చేసుకోండి!"
                     else -> "మీ సేవ్ చేసిన డాక్యుమెంట్ గడువు (${formattedDate}) నాటికి ముగిసింది (Missed). దయచేసి వెంటనే అప్‌డేట్ చేయండి!"
                 }
-                sendNotification(document.id + 40000, title, message)
+                sendNotification(DocumentNotificationScheduler.documentNotificationId(document.id), title, message)
+            } else {
+                DocumentNotificationScheduler.cancelDocumentNotification(applicationContext, docId)
             }
             return Result.success()
         }
 
-        val currentTime = System.currentTimeMillis()
-        val notifyThreshold = 7 * 24 * 60 * 60 * 1000L // 7 days ahead for proactive warning
+        val notifyThreshold = NOTIFY_THRESHOLD_MS // 7 days ahead for proactive warning
         val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
         // 1. Check Explicit Reminders
         val reminders = repository.pendingReminders.firstOrNull() ?: emptyList()
         for (reminder in reminders) {
+            if (isStalePreRenewalReminder(reminder, resolution.effectiveExpiryByVehicleAndCat, currentTime, notifyThreshold)) {
+                repository.updateReminder(reminder.copy(isCompleted = true))
+                DocumentNotificationScheduler.cancelReminderNotification(applicationContext, reminder.id)
+                continue
+            }
+
             val diff = reminder.reminderDate - currentTime
             val reminderTitle = reminder.title
+            val notifId = DocumentNotificationScheduler.reminderNotificationId(reminder.id)
             if (diff in 0..notifyThreshold) {
                 sendNotification(
-                    id = reminder.id + 10000,
+                    id = notifId,
                     title = "ManaVahana: $reminderTitle (Due / త్వరలో ఉంది)",
                     message = reminder.description.ifEmpty { "మీకు ఒక రిమైండర్ టాస్క్ ఉంది. గడువు: ${sdf.format(Date(reminder.reminderDate))}" }
                 )
             } else if (diff < 0) {
                 sendNotification(
-                    id = reminder.id + 10000,
+                    id = notifId,
                     title = "ManaVahana: $reminderTitle (Missed / గడువు ముగిసింది)",
                     message = "గడువు తేదీ: ${sdf.format(Date(reminder.reminderDate))}. ${reminder.description}"
                 )
+            } else {
+                DocumentNotificationScheduler.cancelNotification(applicationContext, notifId)
             }
         }
 
-        // 2. Check Vehicle Expiries (Insurance & Pollution)
-        val vehicles = repository.allVehicles.firstOrNull() ?: emptyList()
+        // 2. Check Vehicle Expiries (Insurance & Pollution), harmonized with renewed Vault Documents
         for (vehicle in vehicles) {
+            val effectiveIns = resolution.effectiveVehicleInsuranceExpiry[vehicle.id] ?: vehicle.insuranceExpiry
+            val effectivePol = resolution.effectiveVehiclePollutionExpiry[vehicle.id] ?: vehicle.pollutionExpiry
+
+            if (effectiveIns > vehicle.insuranceExpiry || effectivePol > vehicle.pollutionExpiry) {
+                repository.updateVehicle(
+                    vehicle.copy(
+                        insuranceExpiry = effectiveIns,
+                        pollutionExpiry = effectivePol
+                    )
+                )
+            }
+
             // Insurance Expiry check
-            if (vehicle.insuranceExpiry > 0) {
-                val insDiff = vehicle.insuranceExpiry - currentTime
+            val insNotifId = DocumentNotificationScheduler.vehicleInsuranceNotificationId(vehicle.id)
+            if (effectiveIns > 0) {
+                val insDiff = effectiveIns - currentTime
                 if (insDiff in 0..notifyThreshold) {
                     sendNotification(
-                        id = vehicle.id + 20000,
+                        id = insNotifId,
                         title = "${vehicle.vehicleName} ఇన్సూరెన్స్ (Due Soon)",
-                        message = "మీ ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగియనుంది (Due). ఇప్పుడే రిన్యూ చేసుకోండి!"
+                        message = "మీ ఇన్సూరెన్స్ ${sdf.format(Date(effectiveIns))} తేదీతో ముగియనుంది (Due). ఇప్పుడే రిన్యూ చేసుకోండి!"
                     )
                 } else if (insDiff < 0) {
                     sendNotification(
-                        id = vehicle.id + 20000,
+                        id = insNotifId,
                         title = "${vehicle.vehicleName} ఇన్సూరెన్స్ (Missed / గడువు ముగిసింది!)",
-                        message = "మీ వాహన ఇన్సూరెన్స్ ${sdf.format(Date(vehicle.insuranceExpiry))} తేదీతో ముగిసింది (Missed). దయచేసి వెంటనే రిన్యూ చేయండి!"
+                        message = "మీ వాహన ఇన్సూరెన్స్ ${sdf.format(Date(effectiveIns))} తేదీతో ముగిసింది (Missed). దయచేసి వెంటనే రిన్యూ చేయండి!"
                     )
+                } else {
+                    DocumentNotificationScheduler.cancelNotification(applicationContext, insNotifId)
                 }
+            } else {
+                DocumentNotificationScheduler.cancelNotification(applicationContext, insNotifId)
             }
 
             // Pollution Expiry check
-            if (vehicle.pollutionExpiry > 0) {
-                val polDiff = vehicle.pollutionExpiry - currentTime
+            val polNotifId = DocumentNotificationScheduler.vehiclePollutionNotificationId(vehicle.id)
+            if (effectivePol > 0) {
+                val polDiff = effectivePol - currentTime
                 if (polDiff in 0..notifyThreshold) {
                     sendNotification(
-                        id = vehicle.id + 30000,
+                        id = polNotifId,
                         title = "${vehicle.vehicleName} పొల్యూషన్ సర్టిఫికేట్ (Due Soon)",
-                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(vehicle.pollutionExpiry))} తో ముగియనుంది (Due). తనిఖీ చేయించుకోండి!"
+                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(effectivePol))} తో ముగియనుంది (Due). తనిఖీ చేయించుకోండి!"
                     )
                 } else if (polDiff < 0) {
                     sendNotification(
-                        id = vehicle.id + 30000,
+                        id = polNotifId,
                         title = "${vehicle.vehicleName} పొల్యూషన్ సర్టిఫికేట్ (Missed / గడువు ముగిసింది!)",
-                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(vehicle.pollutionExpiry))} నాటికి ముగిసింది (Missed). వెంటనే కొత్తది పొందండి!"
+                        message = "మీ పొల్యూషన్ సర్టిఫికేట్ ${sdf.format(Date(effectivePol))} నాటికి ముగిసింది (Missed). వెంటనే కొత్తది పొందండి!"
                     )
+                } else {
+                    DocumentNotificationScheduler.cancelNotification(applicationContext, polNotifId)
                 }
+            } else {
+                DocumentNotificationScheduler.cancelNotification(applicationContext, polNotifId)
             }
         }
 
         // 3. Check Document Expiries from vault repository
-        val documents = repository.allDocuments.firstOrNull() ?: emptyList()
         for (document in documents) {
+            val docNotifId = DocumentNotificationScheduler.documentNotificationId(document.id)
             val expiry = document.expiryDate
             if (expiry != null && expiry > 0) {
+                if (isDocumentSuperseded(document, resolution.latestDocExpiryByVehicleAndCat, currentTime, notifyThreshold)) {
+                    DocumentNotificationScheduler.cancelNotification(applicationContext, docNotifId)
+                    continue
+                }
                 val docDiff = expiry - currentTime
                 if (docDiff in 0..notifyThreshold) {
                     sendNotification(
-                        id = document.id + 40000,
+                        id = docNotifId,
                         title = "${document.docType}: ${document.title} (Due Soon)",
                         message = "మీ డాక్యుమెంట్ గడువు ${sdf.format(Date(expiry))} తేదీతో ముగియనుంది (Due Soon)!"
                     )
                 } else if (docDiff < 0) {
                     sendNotification(
-                        id = document.id + 40000,
+                        id = docNotifId,
                         title = "${document.docType}: ${document.title} (Missed / గడువు ముగిసింది!)",
                         message = "మీ సేవ్ చేసిన డాక్యుమెంట్ ${sdf.format(Date(expiry))} తేదీతో ముగిసింది (Missed). దయచేసి అప్‌డేట్ చేయండి!"
                     )
+                } else {
+                    DocumentNotificationScheduler.cancelNotification(applicationContext, docNotifId)
                 }
+            } else {
+                DocumentNotificationScheduler.cancelNotification(applicationContext, docNotifId)
             }
         }
 

@@ -2079,11 +2079,12 @@ fun QuickActionChip(
 }
 
 fun getVehicleIcon(type: String): androidx.compose.ui.graphics.vector.ImageVector {
-    return when (type) {
-        "Bike" -> Icons.Default.TwoWheeler
-        "Car" -> Icons.Default.DirectionsCar
-        "Auto" -> Icons.Default.ElectricRickshaw
-        "Truck" -> Icons.Default.LocalShipping
+    return when (type.trim().lowercase()) {
+        "bike" -> Icons.Default.TwoWheeler
+        "car" -> Icons.Default.DirectionsCar
+        "auto" -> Icons.Default.ElectricRickshaw
+        "truck" -> Icons.Default.LocalShipping
+        "tractor" -> Icons.Default.Agriculture
         else -> Icons.Default.ElectricCar
     }
 }

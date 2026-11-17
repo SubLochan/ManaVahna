@@ -379,33 +379,7 @@ fun FuelLogsScreen(
     var editingFuel by remember { mutableStateOf<FuelLog?>(null) }
     var itemToDelete by remember { mutableStateOf<FuelLog?>(null) }
 
-    // Form builders
-    var vehicleId by remember { mutableStateOf(0) }
-    var fuelDate by remember { mutableStateOf(System.currentTimeMillis()) }
-    var litersFilled by remember { mutableStateOf("") }
-    var pricePerLiter by remember { mutableStateOf("") }
-    var totalAmount by remember { mutableStateOf("") }
-    var odometerReading by remember { mutableStateOf("") }
-    var fuelStationName by remember { mutableStateOf("") }
-
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-
-    fun resetFields() {
-        editingFuel = null
-        vehicleId = selectedVehicle?.id ?: vehicles.firstOrNull()?.id ?: 0
-        fuelDate = System.currentTimeMillis()
-        litersFilled = ""
-        pricePerLiter = ""
-        totalAmount = ""
-        odometerReading = ""
-        fuelStationName = ""
-    }
-
-    LaunchedEffect(selectedVehicle, showAddDialog) {
-        if (showAddDialog && editingFuel == null) {
-            vehicleId = selectedVehicle?.id ?: vehicles.firstOrNull()?.id ?: 0
-        }
-    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("fuel_logs_screen"),
@@ -415,7 +389,7 @@ fun FuelLogsScreen(
                     if (vehicles.isEmpty()) {
                         android.widget.Toast.makeText(context, "Please add a vehicle from the Dashboard first!", android.widget.Toast.LENGTH_LONG).show()
                     } else {
-                        resetFields()
+                        editingFuel = null
                         showAddDialog = true
                     }
                 },
@@ -484,7 +458,9 @@ fun FuelLogsScreen(
                     }
                     LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         items(fuelLogs) { log ->
-                            val vehicleName = vehicles.find { it.id == log.vehicleId }?.vehicleName ?: "Vehicle"
+                            val vehicle = vehicles.find { it.id == log.vehicleId }
+                            val vehicleName = vehicle?.vehicleName ?: "Vehicle"
+                            val vehicleType = vehicle?.vehicleType ?: "Car"
                             val vehicleLogs = sortedVehiclesLogs[log.vehicleId] ?: emptyList()
                             val idx = vehicleLogs.indexOf(log)
                             val mileage = if (idx > 0) {
@@ -500,16 +476,27 @@ fun FuelLogsScreen(
                             ) {
                                 Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = if (langCode == "te") {
-                                                "$vehicleName - ${log.litersFilled} లీటర్లు నింపారు"
-                                            } else if (langCode == "hi") {
-                                                "$vehicleName - ${log.litersFilled} लीटर भरा"
-                                            } else {
-                                                "$vehicleName - Filled ${log.litersFilled}L"
-                                            },
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = getVehicleIcon(vehicleType),
+                                                contentDescription = vehicleType,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Text(
+                                                text = if (langCode == "te") {
+                                                    "$vehicleName - ${log.litersFilled} లీటర్లు నింపారు"
+                                                } else if (langCode == "hi") {
+                                                    "$vehicleName - ${log.litersFilled} लीटर भरा"
+                                                } else {
+                                                    "$vehicleName - Filled ${log.litersFilled}L"
+                                                },
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                         Text(
                                             text = if (langCode == "te") {
                                                 "కేంద్రం: ${log.fuelStationName}"
@@ -566,13 +553,6 @@ fun FuelLogsScreen(
                                             IconButton(
                                                 onClick = {
                                                     editingFuel = log
-                                                    vehicleId = log.vehicleId
-                                                    fuelDate = log.fuelDate
-                                                    litersFilled = log.litersFilled.toString()
-                                                    pricePerLiter = log.pricePerLiter.toString()
-                                                    totalAmount = log.totalAmount.toString()
-                                                    odometerReading = log.odometerReading.toString()
-                                                    fuelStationName = log.fuelStationName
                                                     showAddDialog = true
                                                 }
                                             ) {
@@ -593,124 +573,24 @@ fun FuelLogsScreen(
     }
 
     if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        FuelEntryDialog(
+            vehicles = vehicles,
+            allFuelLogs = fuelLogs,
+            initialVehicleId = selectedVehicle?.id ?: vehicles.firstOrNull()?.id ?: 0,
+            allowVehicleSelection = true,
+            editingFuel = editingFuel,
+            onDismiss = {
                 showAddDialog = false
-                resetFields()
+                editingFuel = null
             },
-            title = { Text(if (editingFuel != null) "Edit Fuel Fill" else "Log Fuel Fill") },
-            text = {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item {
-                        var expandedVeh by remember { mutableStateOf(false) }
-                        Box {
-                            val activeVehName = vehicles.find { it.id == vehicleId }?.vehicleName ?: "Select Vehicle"
-                            OutlinedButton(onClick = { expandedVeh = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Vehicle: $activeVehName")
-                            }
-                            DropdownMenu(expanded = expandedVeh, onDismissRequest = { expandedVeh = false }) {
-                                vehicles.forEach { veh ->
-                                    DropdownMenuItem(
-                                        text = { Text(veh.vehicleName) },
-                                        onClick = {
-                                            vehicleId = veh.id
-                                            expandedVeh = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item {
-                        OutlinedTextField(
-                            value = litersFilled,
-                            onValueChange = {
-                                litersFilled = it
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            label = { Text("Liters Filled") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    item {
-                        OutlinedTextField(
-                            value = totalAmount,
-                            onValueChange = {
-                                totalAmount = it
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            label = { Text("Total Cost (₹)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    item {
-                        OutlinedTextField(
-                            value = odometerReading,
-                            onValueChange = { odometerReading = it },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Odometer (km)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    item {
-                        OutlinedTextField(
-                            value = fuelStationName,
-                            onValueChange = { fuelStationName = it },
-                            label = { Text("Fuel Center / Station") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    item {
-                        DatePickerField(
-                            label = "Date",
-                            timestamp = fuelDate,
-                            onDateSelected = { fuelDate = it },
-                            context = context,
-                            sdf = sdf
-                        )
-                    }
+            onSave = { newFuelLog ->
+                if (editingFuel != null) {
+                    viewModel.updateFuelLog(newFuelLog)
+                } else {
+                    viewModel.addFuelLog(newFuelLog)
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (vehicleId > 0 && litersFilled.isNotBlank() && totalAmount.isNotBlank() && odometerReading.isNotBlank()) {
-                            val liters = litersFilled.toDoubleOrNull() ?: 0.0
-                            val total = totalAmount.toDoubleOrNull() ?: 0.0
-                            val calculatedPrice = if (liters > 0) total / liters else 0.0
-                            val newFuelLog = FuelLog(
-                                id = editingFuel?.id ?: 0,
-                                vehicleId = vehicleId,
-                                fuelDate = fuelDate,
-                                litersFilled = liters,
-                                pricePerLiter = calculatedPrice,
-                                totalAmount = total,
-                                odometerReading = odometerReading.toDoubleOrNull() ?: 0.0,
-                                fuelStationName = fuelStationName.ifBlank { "Local Pump" }
-                            )
-                            if (editingFuel != null) {
-                                viewModel.updateFuelLog(newFuelLog)
-                            } else {
-                                viewModel.addFuelLog(newFuelLog)
-                            }
-                            showAddDialog = false
-                            resetFields()
-                        }
-                    }
-                ) {
-                    Text("Save Fuel Log")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showAddDialog = false
-                    resetFields()
-                }) { Text("Cancel") }
+                showAddDialog = false
+                editingFuel = null
             }
         )
     }

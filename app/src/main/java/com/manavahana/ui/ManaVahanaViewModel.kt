@@ -207,6 +207,92 @@ class ManaVahanaViewModel(
     val pendingReminders = repository.pendingReminders
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private fun appContextOrNull(): android.content.Context? =
+        com.manavahana.ManaVahanaApplication.getInstanceOrNull()
+
+    private fun normalizeDocReminderCategory(docType: String): String = when {
+        docType.contains("Insurance", ignoreCase = true) -> "Insurance"
+        docType.contains("Pollution", ignoreCase = true) -> "Pollution"
+        else -> "License"
+    }
+
+    private fun isAutoExpiryReminder(reminder: Reminder): Boolean =
+        reminder.title.endsWith("Expiry", ignoreCase = true) ||
+            reminder.title.contains("Renewal", ignoreCase = true) ||
+            reminder.description.contains("expiring", ignoreCase = true)
+
+    private suspend fun cleanupMatchingRemindersAndNotifications(
+        context: android.content.Context?,
+        vehicleId: Int,
+        newTitle: String,
+        oldTitle: String?,
+        docType: String,
+        onlyOlderThan: Long? = null,
+        allowCategoryCleanup: Boolean = true
+    ) {
+        val normCat = com.manavahana.worker.ReminderWorker.normalizeCategory(docType)
+        val reminders = repository.allReminders.firstOrNull() ?: emptyList()
+        for (item in reminders) {
+            if (item.vehicleId != vehicleId) continue
+            val matchesTitle =
+                item.title.equals("$newTitle Expiry", ignoreCase = true) ||
+                    (newTitle.isNotBlank() && item.title.contains(newTitle, ignoreCase = true)) ||
+                    (!oldTitle.isNullOrBlank() && (
+                        item.title.equals("$oldTitle Expiry", ignoreCase = true) ||
+                            item.title.contains(oldTitle, ignoreCase = true)
+                        ))
+            val matchesCategoryAuto =
+                allowCategoryCleanup &&
+                    normCat != null &&
+                    item.category.equals(normCat, ignoreCase = true) &&
+                    isAutoExpiryReminder(item) &&
+                    (onlyOlderThan == null || item.reminderDate < onlyOlderThan)
+
+            if (matchesTitle || matchesCategoryAuto) {
+                repository.deleteReminder(item)
+                com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(context, item.id)
+            }
+        }
+    }
+
+    private suspend fun syncVehicleFromDocument(
+        context: android.content.Context?,
+        document: Document,
+        isUpdate: Boolean
+    ) {
+        val expiry = document.expiryDate ?: return
+        if (expiry <= 0L) return
+        val vehicle = repository.getVehicleById(document.vehicleId).firstOrNull() ?: return
+        val isInsurance = document.docType.contains("Insurance", ignoreCase = true)
+        val isPollution = document.docType.contains("Pollution", ignoreCase = true)
+
+        if (isInsurance) {
+            if (isUpdate || expiry > vehicle.insuranceExpiry || vehicle.insuranceExpiry <= 0L) {
+                if (vehicle.insuranceExpiry != expiry) {
+                    repository.updateVehicle(vehicle.copy(insuranceExpiry = expiry))
+                }
+            }
+            com.manavahana.worker.DocumentNotificationScheduler.cancelVehicleExpiryNotifications(
+                context = context,
+                vehicleId = vehicle.id,
+                cancelInsurance = true,
+                cancelPollution = false
+            )
+        } else if (isPollution) {
+            if (isUpdate || expiry > vehicle.pollutionExpiry || vehicle.pollutionExpiry <= 0L) {
+                if (vehicle.pollutionExpiry != expiry) {
+                    repository.updateVehicle(vehicle.copy(pollutionExpiry = expiry))
+                }
+            }
+            com.manavahana.worker.DocumentNotificationScheduler.cancelVehicleExpiryNotifications(
+                context = context,
+                vehicleId = vehicle.id,
+                cancelInsurance = false,
+                cancelPollution = true
+            )
+        }
+    }
+
     // Database CRUD wrappers
     fun addVehicle(vehicle: Vehicle) {
         viewModelScope.launch {
@@ -243,13 +329,120 @@ class ManaVahanaViewModel(
 
     fun updateVehicle(vehicle: Vehicle) {
         viewModelScope.launch {
+            val ctx = appContextOrNull()
+            val oldVehicle = repository.getVehicleById(vehicle.id).firstOrNull()
             repository.updateVehicle(vehicle)
+
+            val insuranceChanged = oldVehicle == null || oldVehicle.insuranceExpiry != vehicle.insuranceExpiry
+            val pollutionChanged = oldVehicle == null || oldVehicle.pollutionExpiry != vehicle.pollutionExpiry
+
+            if (insuranceChanged) {
+                com.manavahana.worker.DocumentNotificationScheduler.cancelVehicleExpiryNotifications(
+                    context = ctx,
+                    vehicleId = vehicle.id,
+                    cancelInsurance = true,
+                    cancelPollution = false
+                )
+                val reminders = repository.allReminders.firstOrNull() ?: emptyList()
+                for (rem in reminders) {
+                    if (rem.vehicleId == vehicle.id && rem.category.equals("Insurance", ignoreCase = true) && isAutoExpiryReminder(rem)) {
+                        repository.deleteReminder(rem)
+                        com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(ctx, rem.id)
+                    }
+                }
+                if (vehicle.insuranceExpiry > 0) {
+                    repository.insertReminder(
+                        Reminder(
+                            vehicleId = vehicle.id,
+                            title = "${vehicle.vehicleName} - Insurance Renewal",
+                            description = "Insurance is expiring. Renew with insurance provider.",
+                            reminderDate = vehicle.insuranceExpiry - (2 * 24 * 60 * 60 * 1000L),
+                            category = "Insurance"
+                        )
+                    )
+                    val docs = repository.allDocuments.firstOrNull() ?: emptyList()
+                    for (doc in docs) {
+                        if (doc.vehicleId == vehicle.id && doc.docType.contains("Insurance", ignoreCase = true) && doc.expiryDate != vehicle.insuranceExpiry) {
+                            val updatedDoc = doc.copy(expiryDate = vehicle.insuranceExpiry)
+                            repository.updateDocument(updatedDoc)
+                            ctx?.let {
+                                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(it, updatedDoc)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (pollutionChanged) {
+                com.manavahana.worker.DocumentNotificationScheduler.cancelVehicleExpiryNotifications(
+                    context = ctx,
+                    vehicleId = vehicle.id,
+                    cancelInsurance = false,
+                    cancelPollution = true
+                )
+                val reminders = repository.allReminders.firstOrNull() ?: emptyList()
+                for (rem in reminders) {
+                    if (rem.vehicleId == vehicle.id && rem.category.equals("Pollution", ignoreCase = true) && isAutoExpiryReminder(rem)) {
+                        repository.deleteReminder(rem)
+                        com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(ctx, rem.id)
+                    }
+                }
+                if (vehicle.pollutionExpiry > 0) {
+                    repository.insertReminder(
+                        Reminder(
+                            vehicleId = vehicle.id,
+                            title = "${vehicle.vehicleName} - PUC Renewal",
+                            description = "Pollution Certificate is expiring. Visit nearest emission center.",
+                            reminderDate = vehicle.pollutionExpiry - (1 * 24 * 60 * 60 * 1000L),
+                            category = "Pollution"
+                        )
+                    )
+                    val docs = repository.allDocuments.firstOrNull() ?: emptyList()
+                    for (doc in docs) {
+                        if (doc.vehicleId == vehicle.id && doc.docType.contains("Pollution", ignoreCase = true) && doc.expiryDate != vehicle.pollutionExpiry) {
+                            val updatedDoc = doc.copy(expiryDate = vehicle.pollutionExpiry)
+                            repository.updateDocument(updatedDoc)
+                            ctx?.let {
+                                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(it, updatedDoc)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     fun deleteVehicle(vehicle: Vehicle) {
         viewModelScope.launch {
+            val ctx = appContextOrNull()
             repository.deleteVehicle(vehicle)
+            com.manavahana.worker.DocumentNotificationScheduler.cancelVehicleExpiryNotifications(
+                context = ctx,
+                vehicleId = vehicle.id,
+                cancelInsurance = true,
+                cancelPollution = true
+            )
+            try {
+                val reminders = repository.allReminders.firstOrNull() ?: emptyList()
+                for (rem in reminders) {
+                    if (rem.vehicleId == vehicle.id) {
+                        repository.deleteReminder(rem)
+                        com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(ctx, rem.id)
+                    }
+                }
+                val docs = repository.allDocuments.firstOrNull() ?: emptyList()
+                for (doc in docs) {
+                    if (doc.vehicleId == vehicle.id) {
+                        repository.deleteDocument(doc)
+                        ctx?.let {
+                            com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(it, doc.id)
+                        }
+                        com.manavahana.worker.DocumentNotificationScheduler.cancelDocumentNotification(ctx, doc.id)
+                    }
+                }
+            } catch (_: Exception) {
+                // Ignore
+            }
             if (_selectedVehicleId.value == vehicle.id) {
                 _selectedVehicleId.value = null
             }
@@ -361,54 +554,80 @@ class ManaVahanaViewModel(
 
     fun addDocument(context: android.content.Context, document: Document) {
         viewModelScope.launch {
+            val appCtx = context.applicationContext ?: context
             val generatedId = repository.insertDocument(document)
             val finalDoc = document.copy(id = generatedId.toInt())
             // Auto add reminder if an expiry date is set
             if (finalDoc.expiryDate != null && finalDoc.expiryDate > 0) {
+                val isInsOrPol = finalDoc.docType.contains("Insurance", ignoreCase = true) ||
+                    finalDoc.docType.contains("Pollution", ignoreCase = true)
+                cleanupMatchingRemindersAndNotifications(
+                    context = appCtx,
+                    vehicleId = finalDoc.vehicleId,
+                    newTitle = finalDoc.title,
+                    oldTitle = null,
+                    docType = finalDoc.docType,
+                    onlyOlderThan = finalDoc.expiryDate,
+                    allowCategoryCleanup = isInsOrPol
+                )
+                syncVehicleFromDocument(appCtx, finalDoc, isUpdate = false)
                 repository.insertReminder(
                     Reminder(
                         vehicleId = finalDoc.vehicleId,
                         title = "${finalDoc.title} Expiry",
                         description = "Document ${finalDoc.title} is expiring. Renew in time.",
                         reminderDate = finalDoc.expiryDate,
-                        category = if (finalDoc.docType == "Insurance") "Insurance" else if (finalDoc.docType == "Pollution Certificate") "Pollution" else "License"
+                        category = normalizeDocReminderCategory(finalDoc.docType)
                     )
                 )
                 // Schedule WorkManager notification alarms
-                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(context.applicationContext, finalDoc)
+                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(appCtx, finalDoc)
             }
         }
     }
 
     fun deleteDocument(context: android.content.Context, document: Document) {
         viewModelScope.launch {
+            val appCtx = context.applicationContext ?: context
             repository.deleteDocument(document)
             try {
-                val list = repository.allReminders.firstOrNull() ?: emptyList()
-                val match = list.find { it.vehicleId == document.vehicleId && (it.title == "${document.title} Expiry" || it.title.contains(document.title)) }
-                if (match != null) {
-                    repository.deleteReminder(match)
-                }
-            } catch (e: Exception) {
+                cleanupMatchingRemindersAndNotifications(
+                    context = appCtx,
+                    vehicleId = document.vehicleId,
+                    newTitle = document.title,
+                    oldTitle = null,
+                    docType = document.docType,
+                    allowCategoryCleanup = false
+                )
+            } catch (_: Exception) {
                 // Ignore
             }
-            // Cancel WorkManager notification alarm
-            com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(context.applicationContext, document.id)
+            // Cancel WorkManager notification alarm and any active tray notification
+            com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(appCtx, document.id)
+            com.manavahana.worker.DocumentNotificationScheduler.cancelDocumentNotification(appCtx, document.id)
         }
     }
 
     fun updateDocument(context: android.content.Context, document: Document) {
         viewModelScope.launch {
+            val appCtx = context.applicationContext ?: context
+            val previousDoc = repository.allDocuments.firstOrNull()?.find { it.id == document.id }
             repository.updateDocument(document)
             try {
-                val list = repository.allReminders.firstOrNull() ?: emptyList()
-                val match = list.find { it.vehicleId == document.vehicleId && (it.title == "${document.title} Expiry" || it.title.contains(document.title)) }
-                if (match != null) {
-                    repository.deleteReminder(match)
-                }
-            } catch (e: Exception) {
+                val normCat = com.manavahana.worker.ReminderWorker.normalizeCategory(document.docType)
+                cleanupMatchingRemindersAndNotifications(
+                    context = appCtx,
+                    vehicleId = document.vehicleId,
+                    newTitle = document.title,
+                    oldTitle = previousDoc?.title,
+                    docType = document.docType,
+                    allowCategoryCleanup = (normCat == "Insurance" || normCat == "Pollution")
+                )
+                syncVehicleFromDocument(appCtx, document, isUpdate = true)
+            } catch (_: Exception) {
                 // Ignore
             }
+            com.manavahana.worker.DocumentNotificationScheduler.cancelDocumentNotification(appCtx, document.id)
             if (document.expiryDate != null && document.expiryDate > 0) {
                 repository.insertReminder(
                     Reminder(
@@ -416,14 +635,14 @@ class ManaVahanaViewModel(
                         title = "${document.title} Expiry",
                         description = "Document ${document.title} is expiring. Renew in time.",
                         reminderDate = document.expiryDate,
-                        category = if (document.docType == "Insurance") "Insurance" else if (document.docType == "Pollution Certificate") "Pollution" else "License"
+                        category = normalizeDocReminderCategory(document.docType)
                     )
                 )
                 // Re-schedule WorkManager notification alarms
-                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(context.applicationContext, document)
+                com.manavahana.worker.DocumentNotificationScheduler.scheduleExpiryNotifications(appCtx, document)
             } else {
                 // Cancel scheduled notification if clear
-                com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(context.applicationContext, document.id)
+                com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(appCtx, document.id)
             }
         }
     }
@@ -437,18 +656,26 @@ class ManaVahanaViewModel(
     fun updateReminder(reminder: Reminder) {
         viewModelScope.launch {
             repository.updateReminder(reminder)
+            if (reminder.isCompleted || reminder.reminderDate - System.currentTimeMillis() > com.manavahana.worker.ReminderWorker.NOTIFY_THRESHOLD_MS) {
+                com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(appContextOrNull(), reminder.id)
+            }
         }
     }
 
     fun toggleReminderCompleted(reminder: Reminder) {
         viewModelScope.launch {
-            repository.updateReminder(reminder.copy(isCompleted = !reminder.isCompleted))
+            val updated = reminder.copy(isCompleted = !reminder.isCompleted)
+            repository.updateReminder(updated)
+            if (updated.isCompleted) {
+                com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(appContextOrNull(), updated.id)
+            }
         }
     }
 
     fun deleteReminder(reminder: Reminder) {
         viewModelScope.launch {
             repository.deleteReminder(reminder)
+            com.manavahana.worker.DocumentNotificationScheduler.cancelReminderNotification(appContextOrNull(), reminder.id)
         }
     }
 
@@ -703,6 +930,12 @@ class ManaVahanaViewModel(
             
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 try {
+                    // Cancel scheduled work & active notifications before clearing DB
+                    allDocuments.value.forEach {
+                        com.manavahana.worker.DocumentNotificationScheduler.cancelScheduledNotifications(context.applicationContext, it.id)
+                    }
+                    com.manavahana.worker.DocumentNotificationScheduler.cancelAllNotifications(context.applicationContext)
+
                     // Clear existing lists to avoid duplicates
                     vehicles.value.forEach { repository.deleteVehicle(it) }
                     allServiceLogs.value.forEach { repository.deleteServiceLog(it) }

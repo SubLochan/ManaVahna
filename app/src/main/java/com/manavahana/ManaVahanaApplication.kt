@@ -19,6 +19,9 @@ class ManaVahanaApplication : Application() {
     companion object {
         lateinit var instance: ManaVahanaApplication
             private set
+
+        fun getInstanceOrNull(): ManaVahanaApplication? =
+            if (::instance.isInitialized) instance else null
     }
 
     // Lazy initialization for Dependency Injection Container

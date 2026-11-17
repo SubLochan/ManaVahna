@@ -457,12 +457,6 @@ fun VehicleDetailsScreen(
 
     var showAddFuelDialog by remember { mutableStateOf(false) }
     var editingFuelLog by remember { mutableStateOf<FuelLog?>(null) }
-    var fuelDate by remember { mutableStateOf(System.currentTimeMillis()) }
-    var fuelLiters by remember { mutableStateOf("") }
-    var fuelPricePerLiter by remember { mutableStateOf("") }
-    var fuelTotalAmount by remember { mutableStateOf("") }
-    var fuelOdometer by remember { mutableStateOf("") }
-    var fuelStationName by remember { mutableStateOf("") }
 
     var showAddExpenseDialog by remember { mutableStateOf(false) }
     var editingExpense by remember { mutableStateOf<Expense?>(null) }
@@ -498,15 +492,7 @@ fun VehicleDetailsScreen(
         nextServiceDate = 0L
     }
 
-    fun resetFuelFields() {
-        editingFuelLog = null
-        fuelDate = System.currentTimeMillis()
-        fuelLiters = ""
-        fuelPricePerLiter = ""
-        fuelTotalAmount = ""
-        fuelOdometer = ""
-        fuelStationName = ""
-    }
+
 
     fun resetExpenseFields() {
         editingExpense = null
@@ -686,100 +672,24 @@ fun VehicleDetailsScreen(
         }
 
         if (showAddFuelDialog) {
-            val titleText = if (editingFuelLog != null) "Edit Fuel Fill" else "Log Fuel Fill"
-            AlertDialog(
-                onDismissRequest = {
+            FuelEntryDialog(
+                vehicles = listOf(activeVehicle),
+                allFuelLogs = fuels,
+                initialVehicleId = activeVehicle.id,
+                allowVehicleSelection = false,
+                editingFuel = editingFuelLog,
+                onDismiss = {
                     showAddFuelDialog = false
-                    resetFuelFields()
+                    editingFuelLog = null
                 },
-                title = { Text(titleText) },
-                text = {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        item {
-                            OutlinedTextField(
-                                value = fuelLiters,
-                                onValueChange = {
-                                    fuelLiters = it
-                                },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                label = { Text(getLocalizedText("Liters Filled", langCode)) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        item {
-                            OutlinedTextField(
-                                value = fuelTotalAmount,
-                                onValueChange = {
-                                    fuelTotalAmount = it
-                                },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                label = { Text(getLocalizedText("Total Cost (₹)", langCode)) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        item {
-                            OutlinedTextField(
-                                value = fuelOdometer,
-                                onValueChange = { fuelOdometer = it },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                label = { Text(getLocalizedText("Odometer (km)", langCode)) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        item {
-                            OutlinedTextField(
-                                value = fuelStationName,
-                                onValueChange = { fuelStationName = it },
-                                label = { Text(getLocalizedText("Fuel Center / Station", langCode)) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        item {
-                            DatePickerField(
-                                label = getLocalizedText("Date", langCode),
-                                timestamp = fuelDate,
-                                onDateSelected = { fuelDate = it },
-                                context = context,
-                                sdf = sdf
-                            )
-                        }
+                onSave = { newFuelLog ->
+                    if (editingFuelLog != null) {
+                        viewModel.updateFuelLog(newFuelLog)
+                    } else {
+                        viewModel.addFuelLog(newFuelLog)
                     }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (fuelLiters.isNotBlank() && fuelTotalAmount.isNotBlank() && fuelOdometer.isNotBlank()) {
-                                val liters = fuelLiters.toDoubleOrNull() ?: 0.0
-                                val total = fuelTotalAmount.toDoubleOrNull() ?: 0.0
-                                val calculatedPrice = if (liters > 0) total / liters else 0.0
-                                val newFuelLog = FuelLog(
-                                    id = editingFuelLog?.id ?: 0,
-                                    vehicleId = activeVehicle.id,
-                                    fuelDate = fuelDate,
-                                    litersFilled = liters,
-                                    pricePerLiter = calculatedPrice,
-                                    totalAmount = total,
-                                    odometerReading = fuelOdometer.toDoubleOrNull() ?: 0.0,
-                                    fuelStationName = fuelStationName.ifBlank { "Local Pump" }
-                                )
-                                if (editingFuelLog != null) {
-                                    viewModel.updateFuelLog(newFuelLog)
-                                } else {
-                                    viewModel.addFuelLog(newFuelLog)
-                                }
-                                showAddFuelDialog = false
-                                resetFuelFields()
-                            }
-                        }
-                    ) {
-                        Text(getLocalizedText("Save Fuel Log", langCode))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        showAddFuelDialog = false
-                        resetFuelFields()
-                    }) { Text(getLocalizedText("Cancel", langCode)) }
+                    showAddFuelDialog = false
+                    editingFuelLog = null
                 }
             )
         }
@@ -1046,7 +956,7 @@ fun VehicleDetailsScreen(
                                     showAddServiceDialog = true
                                 }
                                 2 -> {
-                                    resetFuelFields()
+                                    editingFuelLog = null
                                     showAddFuelDialog = true
                                 }
                                 3 -> {
@@ -1282,12 +1192,6 @@ fun VehicleDetailsScreen(
                                     mileage = mileage,
                                     onEdit = {
                                         editingFuelLog = fuel
-                                        fuelDate = fuel.fuelDate
-                                        fuelLiters = fuel.litersFilled.toString()
-                                        fuelPricePerLiter = fuel.pricePerLiter.toString()
-                                        fuelTotalAmount = fuel.totalAmount.toString()
-                                        fuelOdometer = fuel.odometerReading.toString()
-                                        fuelStationName = fuel.fuelStationName
                                         showAddFuelDialog = true
                                     },
                                     onDelete = { fuelLogToDelete = fuel }

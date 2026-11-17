@@ -70,4 +70,37 @@ class FuelWidgetUnitTest {
         assertTrue(newOdo > previousOdo)
         assertEquals(250.0, newOdo - previousOdo, 0.01)
     }
+
+    @Test
+    fun testFuelEntryCalculationsBidirectionalAndSaveFallbacks() {
+        // Amount -> Liters
+        assertEquals(
+            "4.88",
+            com.manavahana.ui.screens.FuelEntryCalculations.calculateLitersFromAmount("500", "102.50", 102.50)
+        )
+        // Liters -> Amount
+        assertEquals(
+            "512.50",
+            com.manavahana.ui.screens.FuelEntryCalculations.calculateAmountFromLiters("5", "102.50", 102.50)
+        )
+
+        // Saving with only amount (blank odometer & blank liters) falls back cleanly like the widget
+        val resolved = com.manavahana.ui.screens.FuelEntryCalculations.resolveFuelLogOnSave(
+            existingId = 0,
+            vehicleId = 3,
+            fuelDate = 1750000000000L,
+            totalAmountText = "1000",
+            litersText = "",
+            pricePerLiterText = "100.00",
+            odometerText = "",
+            stationName = "HP",
+            fallbackPrice = 102.50,
+            previousOdometer = 14500.0
+        )
+        org.junit.Assert.assertNotNull(resolved)
+        assertEquals(10.0, resolved!!.litersFilled, 0.01)
+        assertEquals(100.0, resolved.pricePerLiter, 0.01)
+        assertEquals(14500.0, resolved.odometerReading, 0.01)
+        assertEquals("HP", resolved.fuelStationName)
+    }
 }
