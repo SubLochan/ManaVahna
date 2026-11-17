@@ -17,7 +17,7 @@ android {
     applicationId = "com.Lochan.ManaVahana"
     minSdk = 24
     targetSdk = 36
-    versionCode = 32
+    versionCode = 34
     versionName = "3.4.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
